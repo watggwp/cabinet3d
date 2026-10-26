@@ -1,0 +1,1517 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ตู้มิเตอร์ ESP32 3 มิติ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#eef1f3; --surface:#ffffff; --ink:#1b2329; --muted:#5b6872; --line:#d5dbe0; --line-strong:#b8c2ca;
+  --accent:#0a7fa3; --accent-ink:#ffffff; --accent-soft:#e1f0f5;
+  --stage:#e3e8eb; --stage-2:#f7f9fa; --hover:#7d8b95;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#13181c; --surface:#1a2026; --ink:#e4e9ec; --muted:#93a1ab; --line:#2a333b; --line-strong:#3a4650;
+    --accent:#4fb8d8; --accent-ink:#0d1418; --accent-soft:#16303a;
+    --stage:#151b20; --stage-2:#1f272e; --hover:#8696a1; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#13181c; --surface:#1a2026; --ink:#e4e9ec; --muted:#93a1ab; --line:#2a333b; --line-strong:#3a4650;
+  --accent:#4fb8d8; --accent-ink:#0d1418; --accent-soft:#16303a;
+  --stage:#151b20; --stage-2:#1f272e; --hover:#8696a1; color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:inherit;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans Thai","Noto Sans Thai","Leelawadee UI",Tahoma,system-ui,sans-serif;font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;}
+.wrap{max-width:1400px;margin:0 auto;padding:20px clamp(12px,3vw,28px) 32px;}
+.head{margin-bottom:14px;}
+h1{font-size:clamp(19px,2.3vw,25px);line-height:1.3;font-weight:600;margin:0;}
+.lede{margin:4px 0 0;color:var(--muted);font-size:14px;max-width:76ch;}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;margin-bottom:12px;}
+.group{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.group-label{font-size:13px;color:var(--muted);}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;background:var(--surface);}
+.seg button{font:inherit;font-size:13.5px;color:var(--ink);background:transparent;border:0;padding:6px 12px;cursor:pointer;}
+.seg button+button{border-left:1px solid var(--line);}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);}
+.seg button:not([aria-pressed="true"]):hover{background:var(--accent-soft);}
+.tog{display:inline-flex;align-items:center;gap:7px;font:inherit;font-size:13.5px;color:var(--ink);background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;padding:6px 11px;cursor:pointer;}
+.tog::before{content:"";width:12px;height:12px;border-radius:3px;border:1.5px solid var(--muted);}
+.tog[aria-pressed="true"]::before{background:var(--accent);border-color:var(--accent);}
+.tog:hover{background:var(--accent-soft);}
+.slider{display:flex;align-items:center;gap:8px;font-size:13.5px;}
+.slider input{accent-color:var(--accent);width:150px;}
+.slider output{font-variant-numeric:tabular-nums;min-width:3.2em;color:var(--muted);}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.cap{display:none!important;}
+.field{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;}
+.field select,.field input{font:inherit;font-size:13.5px;color:var(--ink);background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;padding:5px 8px;}
+.field input{width:4.6em;font-variant-numeric:tabular-nums;}
+.px{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;}
+.btn{font:inherit;font-size:13.5px;font-weight:600;color:var(--accent-ink);background:var(--accent);border:0;border-radius:8px;padding:7px 15px;cursor:pointer;}
+.btn:hover{filter:brightness(1.08);}
+.btn:disabled{opacity:.6;cursor:progress;}
+.cap-msg{font-size:12.5px;color:var(--muted);}
+.stage{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:radial-gradient(120% 90% at 50% 30%,var(--stage-2),var(--stage));height:clamp(420px,74vh,820px);}
+.stage canvas{display:block;width:100%;height:100%;outline:none;touch-action:none;}
+.hint{position:absolute;left:12px;bottom:10px;max-width:calc(100% - 24px);margin:0;font-size:12px;color:var(--muted);pointer-events:none;display:flex;flex-wrap:wrap;gap:2px 14px;}
+.loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:14px;text-align:center;padding:24px;}
+.loading[hidden]{display:none;}
+.tip{position:absolute;left:0;top:0;pointer-events:none;background:var(--ink);color:var(--bg);padding:6px 9px;border-radius:6px;font-size:12.5px;line-height:1.4;max-width:260px;opacity:0;transition:opacity .12s;z-index:2;}
+.tip.on{opacity:1;}
+.tip b{display:block;font-weight:600;}
+.tip span{display:block;opacity:.75;font-size:12px;}
+.titleblock{position:absolute;right:12px;top:12px;margin:0;display:grid;grid-template-columns:repeat(2,auto);background:var(--surface);border:1px solid var(--line-strong);border-radius:4px;font-size:12px;line-height:1.35;pointer-events:none;}
+.titleblock div{padding:6px 11px;border-left:1px solid var(--line);border-top:1px solid var(--line);}
+.titleblock div:nth-child(odd){border-left:0;}
+.titleblock div:nth-child(-n+2){border-top:0;}
+.titleblock dt{color:var(--muted);font-size:11.5px;}
+.titleblock dd{margin:0;font-weight:500;font-variant-numeric:tabular-nums;}
+@media (max-width:640px){.titleblock{display:none;}.hint{font-size:11.5px;}}
+.co-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;}
+.co-svg line,.co-svg polyline{stroke:var(--ink);stroke-width:1.1;fill:none;}
+.co-svg circle{fill:var(--accent);stroke:var(--surface);stroke-width:1.5;}
+.co-lab{position:absolute;inset:0;pointer-events:none;}
+.co-lab div{position:absolute;left:0;top:0;white-space:nowrap;background:var(--surface);border:1px solid var(--line-strong);border-radius:4px;padding:2px 8px;font-size:12.5px;line-height:1.35;color:var(--ink);}
+.co-lab div small{display:block;color:var(--muted);font-size:11px;}
+.ledbox{position:absolute;left:12px;top:12px;background:var(--surface);border:1px solid var(--line-strong);border-radius:6px;padding:8px 10px 6px;font-size:12px;pointer-events:none;}
+.ledbox[hidden]{display:none;}
+.ledbox b{font-weight:600;}
+.ledbox svg{display:block;margin-top:4px;}
+.ledbox .wv{stroke:#1f9a4a;stroke-width:2;fill:none;}
+.ledbox .ax{stroke:var(--line-strong);stroke-width:1;}
+.ledbox .ph{stroke:var(--accent);stroke-width:1.5;}
+.ledbox text{fill:var(--muted);font-size:10px;font-family:inherit;}
+body.fig{background:#fff;}
+body.fig .wrap{max-width:none;padding:0;}
+body.fig .head,body.fig .toolbar,body.fig .hint,body.fig .titleblock,body.fig .tip{display:none!important;}
+body.fig .stage{height:100vh;border:0;border-radius:0;background:#fff;}
+body.fig .co-lab div{font-family:"TH Sarabun New","Sarabun","IBM Plex Sans Thai",sans-serif;font-size:34px;line-height:1.0;padding:3px 10px 2px;border-width:1.5px;background:#fff;border-color:#59646c;color:#111;font-weight:600;}
+body.fig .co-lab div small{font-size:27px;color:#46525a;font-weight:400;}
+body.fig .co-svg line,body.fig .co-svg polyline{stroke:#2b3237;stroke-width:2;}
+body.fig .co-svg circle{fill:#0a7fa3;stroke:#fff;stroke-width:2;r:6px;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="head">
+    <h1>ผังติดตั้งภายในตู้ 3 มิติ: บอร์ดมิเตอร์ ESP32 และเซนเซอร์ DS18B20 9 จุด</h1>
+    <p class="lede">จัดเลย์เอาต์ตามรูปต้นแบบ เดินสายในรางเดินสาย อุปกรณ์อยู่บนราง DIN และสายเซนเซอร์ข้ามบานพับไปยังประตู (3D cabinet layout based on the reference figure)</p>
+  </header>
+
+  <div class="toolbar" role="toolbar" aria-label="ตัวควบคุมมุมมอง">
+    <div class="group">
+      <span class="group-label" id="lbl-view">มุมมอง</span>
+      <div class="seg" role="group" aria-labelledby="lbl-view">
+        <button type="button" data-view="over" aria-pressed="true" title="Overview">ภาพรวม</button>
+        <button type="button" data-view="panel" aria-pressed="false" title="Mounting plate, front view">แผงด้านใน</button>
+        <button type="button" data-view="door" aria-pressed="false" title="Inside of the door">ประตูด้านใน</button>
+        <button type="button" data-view="hinge" aria-pressed="false" title="Cable crossing at the hinge">ช่วงข้ามบานพับ</button>
+        <button type="button" data-view="board" aria-pressed="false" title="Meter board close-up">บอร์ดมิเตอร์</button>
+        <button type="button" data-view="led" aria-pressed="false" title="Status LEDs close-up">ไฟสถานะ</button>
+      </div>
+    </div>
+    <div class="group">
+      <span class="group-label" id="lbl-led" title="Green LED2 on GPIO2, timing from the firmware">LED เขียว</span>
+      <div class="seg" role="group" aria-labelledby="lbl-led">
+        <button type="button" data-led="fast" aria-pressed="true" title="100 ms on, 100 ms off">กะพริบเร็ว</button>
+        <button type="button" data-led="slow" aria-pressed="false" title="500 ms on, 500 ms off">กะพริบช้า</button>
+        <button type="button" data-led="solid" aria-pressed="false" title="Always on">ติดค้าง</button>
+        <button type="button" data-led="err" aria-pressed="false" title="80 on, 80 off, 80 on, 700 off">กะพริบคู่</button>
+      </div>
+    </div>
+    <label class="slider" title="Door opening angle">มุมเปิดประตู
+      <input type="range" id="door" min="0" max="115" step="1" value="110">
+      <output id="door-out" for="door">110°</output>
+    </label>
+    <div class="group">
+      <button type="button" class="tog" id="t-cover" aria-pressed="true" title="Show or hide wire duct covers">ฝารางเดินสาย</button>
+      <button type="button" class="tog" id="t-rot" aria-pressed="false" title="Auto rotate">หมุนอัตโนมัติ</button>
+      <button type="button" class="tog" id="t-lab" aria-pressed="true" title="Show or hide callout labels">ป้ายชื่อ</button>
+    </div>
+  </div>
+
+  <div class="toolbar cap" role="group" aria-label="บันทึกภาพ PNG สำหรับรูปเล่ม">
+    <div class="group">
+      <span class="group-label" id="lbl-bg">พื้นหลัง</span>
+      <div class="seg" role="group" aria-labelledby="lbl-bg">
+        <button type="button" data-bg="white" aria-pressed="true" title="White background">สีขาว</button>
+        <button type="button" data-bg="none" aria-pressed="false" title="Transparent background">โปร่งใส</button>
+      </div>
+    </div>
+    <div class="group">
+      <span class="group-label" id="lbl-scale">ความละเอียด</span>
+      <div class="seg" role="group" aria-labelledby="lbl-scale">
+        <button type="button" data-scale="2" aria-pressed="false" title="2 times the view size">2×</button>
+        <button type="button" data-scale="3" aria-pressed="true" title="3 times the view size">3×</button>
+        <button type="button" data-scale="4" aria-pressed="false" title="4 times the view size">4×</button>
+      </div>
+      <output class="px" id="cap-px" title="Image size in pixels"></output>
+    </div>
+    <label class="field" title="Chapter">บทที่
+      <select id="cap-ch"><option selected>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+    </label>
+    <label class="field" title="Figure number in this chapter">ภาพที่
+      <input type="number" id="cap-no" min="1" step="1" value="1" inputmode="numeric">
+    </label>
+    <button type="button" class="btn" id="cap-go" title="Save the current view as PNG">บันทึกภาพ PNG</button>
+    <span class="cap-msg" id="cap-msg" aria-live="polite"></span>
+  </div>
+
+  <div class="layout">
+    <section class="stage" id="stage" aria-label="พื้นที่แสดงโมเดล 3 มิติ">
+      <p class="hint"><span>ลากเพื่อหมุน</span><span>ล้อเมาส์หรือสองนิ้วเพื่อซูม</span><span>คลิกขวาค้างแล้วลากเพื่อเลื่อน</span><span>คลิกชิ้นส่วนเพื่อดูชื่อ</span></p>
+      <svg class="co-svg" id="co-svg" aria-hidden="true"></svg>
+      <div class="co-lab" id="co-lab" aria-hidden="true"></div>
+      <div class="ledbox" id="ledbox" hidden><b id="led-name"></b><svg id="led-wave" width="300" height="46" aria-hidden="true"></svg></div>
+      <div class="tip" id="tip" aria-hidden="true"></div>
+      <div class="loading" id="loading">กำลังสร้างโมเดลตู้</div>
+      <dl class="titleblock" aria-label="ข้อมูลแบบ">
+        <div><dt>ตู้ (สมมติ)</dt><dd>400 × 600 × 200 mm</dd></div>
+        <div><dt>แผ่นติดตั้ง</dt><dd>340 × 540 mm</dd></div>
+        <div><dt>เซนเซอร์บนประตู</dt><dd>9 จุด, 3 × 3</dd></div>
+        <div><dt>หน่วย</dt><dd>mm</dd></div>
+      </dl>
+    </section>
+
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+'use strict';
+var stage=document.getElementById('stage');
+var tip=document.getElementById('tip');
+var loading=document.getElementById('loading');
+if(!window.THREE||!THREE.OrbitControls){
+  loading.textContent='โหลดไลบรารี 3 มิติไม่สำเร็จ ตรวจการเชื่อมต่ออินเทอร์เน็ตแล้วโหลดหน้านี้ใหม่ (The 3D library did not load.)';
+  return;
+}
+var T=THREE;
+var renderer;
+try{ renderer=new T.WebGLRenderer({antialias:true,alpha:true}); }
+catch(e){ loading.textContent='เบราว์เซอร์นี้เปิด WebGL ไม่ได้ จึงแสดงโมเดล 3 มิติไม่ได้ (WebGL is not available.)'; return; }
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.outputEncoding=T.sRGBEncoding;
+renderer.toneMapping=T.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.05;
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=T.PCFSoftShadowMap;
+renderer.domElement.setAttribute('role','img');
+renderer.domElement.setAttribute('aria-label','โมเดล 3 มิติของตู้ไฟ หมุนและซูมได้');
+stage.insertBefore(renderer.domElement,stage.firstChild);
+
+var scene=new T.Scene();
+var camera=new T.PerspectiveCamera(30,1,5,9000);
+var controls=new T.OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true; controls.dampingFactor=0.08;
+controls.minDistance=60; controls.maxDistance=3200;
+controls.autoRotateSpeed=1.0; controls.screenSpacePanning=true;
+
+var PCB=1.6;
+var ANISO=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+var SILK='#f1f2ec', MASK='#1d7a3f', TRACE='#2a8d4e', PAD='#d4d3cb';
+
+(function(){
+  var pm=new T.PMREMGenerator(renderer);
+  var es=new T.Scene(); es.background=new T.Color(0x5b6269);
+  var room=new T.Mesh(new T.BoxGeometry(80,40,80),new T.MeshBasicMaterial({color:0x6c747c,side:T.BackSide}));
+  room.position.y=12; es.add(room);
+  function panel(w,h,x,y,z,rx,ry,k){
+    var m=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({side:T.DoubleSide}));
+    m.material.color.setRGB(k,k,k); m.position.set(x,y,z); m.rotation.set(rx,ry,0); es.add(m);
+  }
+  panel(40,10,0,31,0,Math.PI/2,0,5);
+  panel(14,20,-39,14,0,0,Math.PI/2,2.4);
+  panel(14,20,39,14,10,0,-Math.PI/2,1.5);
+  panel(30,10,0,12,39,0,Math.PI,1.6);
+  scene.environment=pm.fromScene(es,0.035).texture;
+  pm.dispose();
+})();
+scene.add(new T.HemisphereLight(0xffffff,0x9aa3ab,0.4));
+var sun=new T.DirectionalLight(0xffffff,1.05);
+sun.position.set(-320,1150,1400); sun.target.position.set(80,300,120);
+sun.castShadow=true; sun.shadow.mapSize.set(2048,2048);
+var sc=sun.shadow.camera; sc.left=-560; sc.right=560; sc.top=560; sc.bottom=-560; sc.near=300; sc.far=3600;
+sun.shadow.bias=-0.0003; sun.shadow.normalBias=0.4;
+scene.add(sun); scene.add(sun.target);
+var fill=new T.DirectionalLight(0xe4ecff,0.35); fill.position.set(900,500,700); scene.add(fill);
+var wallCatch=new T.Mesh(new T.PlaneGeometry(5000,4000),new T.ShadowMaterial({opacity:0.14}));
+wallCatch.position.set(0,300,-1.5); wallCatch.receiveShadow=true; scene.add(wallCatch);
+
+/* ---------- helpers ---------- */
+function std(hex,rough,metal,extra){
+  var m=new T.MeshStandardMaterial(Object.assign({roughness:rough,metalness:metal},extra||{}));
+  m.color.setHex(hex).convertSRGBToLinear(); return m;
+}
+var MAT={
+  mask:std(0x1d7a3f,0.42,0), maskSide:std(0xbdb782,0.85,0),
+  black:std(0x1a1b1d,0.42,0), blackMatte:std(0x141516,0.8,0),
+  shield:std(0xd0d4d9,0.32,0.85), steel:std(0xb8bdc3,0.3,0.9), silver:std(0xd9dbdf,0.24,0.9),
+  tin:std(0xcfd0cc,0.35,0.8), gold:std(0xd6b46a,0.3,0.95), white:std(0xf2efe6,0.55,0),
+  yellow:std(0xf2c21b,0.35,0), blue:std(0x2160c4,0.45,0), blueCap:std(0x2d67d0,0.3,0),
+  greenA:std(0x2aa85a,0.5,0), greenB:std(0x1b8b46,0.5,0), dark:std(0x2c2f34,0.6,0),
+  hole:std(0x0d0f10,0.9,0), cable:std(0x111213,0.45,0), modPcb:std(0x22302b,0.5,0),
+  tant:std(0xe3a72a,0.45,0), tantBand:std(0x6a3b10,0.5,0), ceramic:std(0xa48a6a,0.6,0),
+  resBody:std(0x1b1b1b,0.6,0), ledBase:std(0xf4f2ea,0.5,0),
+  ledLens:std(0xfff4c7,0.15,0,{transparent:true,opacity:0.8}),
+  alu:std(0xd7dade,0.3,0.7), greyBand:std(0x9ea3a8,0.5,0)
+};
+function lcg(s){ return function(){ s=(Math.imul(s,1664525)+1013904223)>>>0; return s/4294967296; }; }
+function rrPath(p,x,y,w,h,r){
+  p.moveTo(x+r,y); p.lineTo(x+w-r,y); p.quadraticCurveTo(x+w,y,x+w,y+r);
+  p.lineTo(x+w,y+h-r); p.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  p.lineTo(x+r,y+h); p.quadraticCurveTo(x,y+h,x,y+h-r);
+  p.lineTo(x,y+r); p.quadraticCurveTo(x,y,x+r,y);
+}
+function rboxGeo(w,d,h,r,b){
+  r=Math.max(0.05,Math.min(r,(w-2*b)/2-0.01,(d-2*b)/2-0.01));
+  var s=new T.Shape(); rrPath(s,-w/2+b,-d/2+b,w-2*b,d-2*b,r);
+  var g=new T.ExtrudeGeometry(s,{depth:Math.max(0.01,h-2*b),bevelEnabled:b>0,bevelThickness:b,bevelSize:b,bevelSegments:2,curveSegments:6});
+  g.rotateX(-Math.PI/2); g.translate(0,b,0); return g;
+}
+function mbox(w,d,h,mat){ var g=new T.BoxGeometry(w,h,d); g.translate(0,h/2,0); return new T.Mesh(g,mat); }
+function mrbox(w,d,h,r,b,mat){ return new T.Mesh(rboxGeo(w,d,h,r,b),mat); }
+function planeTop(w,d){ var g=new T.PlaneGeometry(w,d); g.rotateX(-Math.PI/2); return g; }
+function canvasTex(w,d,ppm,draw){
+  var c=document.createElement('canvas');
+  c.width=Math.max(4,Math.round(w*ppm)); c.height=Math.max(4,Math.round(d*ppm));
+  var ctx=c.getContext('2d'); ctx.scale(c.width/w,c.height/d); draw(ctx,w,d);
+  var t=new T.CanvasTexture(c); t.encoding=T.sRGBEncoding; t.anisotropy=ANISO; return t;
+}
+function txt(ctx,s,x,y,size,o){
+  o=o||{}; ctx.save(); ctx.translate(x,y); if(o.rot) ctx.rotate(o.rot);
+  var k=size/10; ctx.scale(k,k);
+  ctx.font=(o.style?o.style+' ':'')+(o.weight||600)+' 10px Arial, "Helvetica Neue", Helvetica, sans-serif';
+  ctx.fillStyle=o.color||SILK; ctx.textAlign=o.align||'left'; ctx.textBaseline='middle';
+  ctx.fillText(s,0,0); ctx.restore();
+}
+function decalTop(w,d,ppm,draw,y,opts){
+  opts=opts||{};
+  var mat=new T.MeshStandardMaterial({map:canvasTex(w,d,ppm,draw),roughness:opts.rough==null?0.55:opts.rough,metalness:opts.metal||0,alphaTest:0.5});
+  var m=new T.Mesh(planeTop(w,d),mat); m.position.y=y+0.015; m.receiveShadow=true; return m;
+}
+function blockLabel(w,d,h,r,b,mat,ppm,bg,draw,opts){
+  var g=new T.Group(); g.add(mrbox(w,d,h,r,b,mat));
+  var tw=w-2*b, td=d-2*b, rr=Math.max(0.05,Math.min(r,tw/2-0.01,td/2-0.01));
+  g.add(decalTop(tw-0.04,td-0.04,ppm,function(ctx,W,D){
+    ctx.beginPath(); rrPath(ctx,0,0,W,D,rr); ctx.fillStyle=bg; ctx.fill();
+    ctx.save(); ctx.clip(); draw(ctx,W,D); ctx.restore();
+  },h,opts));
+  return g;
+}
+function rod(a,b,r1,r2,m){
+  var dir=new T.Vector3().subVectors(b,a), len=dir.length();
+  var mesh=new T.Mesh(new T.CylinderGeometry(r2,r1,len,20),m);
+  mesh.position.copy(a).addScaledVector(dir,0.5);
+  mesh.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),dir.normalize());
+  return mesh;
+}
+
+/* ---------- label artwork ---------- */
+function drawRN(ctx,W,D){
+  ctx.translate(W,D); ctx.rotate(Math.PI);
+  var c='#eeeeea';
+  ctx.strokeStyle=c; ctx.lineWidth=0.18; ctx.strokeRect(1.0,1.0,2.0,1.4);
+  ctx.beginPath(); ctx.moveTo(1.4,1.7); ctx.lineTo(2.6,1.7); ctx.stroke();
+  txt(ctx,'RN202-2-02-1M1',3.6,1.6,1.05,{color:c});
+  txt(ctx,'300V/2A @ 40°C',3.6,3.0,1.0,{color:c,weight:500});
+  txt(ctx,'40/100/56',3.6,4.3,0.95,{color:c,weight:500});
+  txt(ctx,'schaffner',W/2,D-1.5,2.1,{color:c,weight:700,align:'center'});
+}
+function drawFuse(ctx,W,D){
+  var emb='#383b40';
+  ctx.fillStyle='#26282b'; ctx.beginPath(); rrPath(ctx,W*0.33,1.2,W*0.36,D-2.4,0.6); ctx.fill();
+  var gx=W*0.35, gw=W*0.32, gy=D/2-1.0;
+  var grd=ctx.createLinearGradient(0,gy,0,gy+2.0);
+  grd.addColorStop(0,'#6b7076'); grd.addColorStop(0.45,'#c9ced3'); grd.addColorStop(1,'#55595e');
+  ctx.fillStyle=grd; ctx.fillRect(gx,gy,gw,2.0);
+  ctx.fillStyle='#e3e5e8'; ctx.fillRect(gx,gy-0.15,1.2,2.3); ctx.fillRect(gx+gw-1.2,gy-0.15,1.2,2.3);
+  ctx.strokeStyle='#8a8f95'; ctx.lineWidth=0.08; ctx.beginPath(); ctx.moveTo(gx+1.2,D/2); ctx.lineTo(gx+gw-1.2,D/2); ctx.stroke();
+  txt(ctx,'5X20',W*0.16,D/2,1.7,{color:emb,weight:700,align:'center',rot:Math.PI/2});
+  txt(ctx,'FUSE',W*0.84,D/2,1.7,{color:emb,weight:700,align:'center',rot:Math.PI/2});
+}
+function drawZMPT(ctx,W,D){
+  txt(ctx,'ZMPT107-1',W/2+0.08,D*0.42+0.08,2.4,{color:'#050506',weight:700,align:'center'});
+  txt(ctx,'ZMPT107-1',W/2,D*0.42,2.4,{color:'#34363a',weight:700,align:'center'});
+}
+function drawHLK(ctx,W,D){
+  var c='#dcdcd8';
+  ctx.save(); ctx.translate(W,0); ctx.rotate(Math.PI/2);
+  txt(ctx,'Hi-Link',D/2,3.4,4.0,{color:c,weight:700,style:'italic',align:'center'});
+  txt(ctx,'INPUT:100-240Vac',D/2,8.0,1.45,{color:c,weight:500,align:'center'});
+  txt(ctx,'0.2A  50-60Hz',D/2,9.9,1.45,{color:c,weight:500,align:'center'});
+  txt(ctx,'OUTPUT:5Vdc=0.6A 3W',D/2,12.4,1.45,{color:c,weight:500,align:'center'});
+  txt(ctx,'P/N:HLK-3M05C',D/2,15.0,1.55,{color:c,weight:700,align:'center'});
+  txt(ctx,'• AC',2.4,2.4,1.2,{color:c}); txt(ctx,'• AC',2.4,W-2.4,1.2,{color:c});
+  txt(ctx,'-Vo',D-2.4,2.4,1.2,{color:c,align:'right'}); txt(ctx,'+Vo',D-2.4,W-2.4,1.2,{color:c,align:'right'});
+  txt(ctx,'RoHS',D/2-4,18.4,1.2,{color:c,align:'center'}); txt(ctx,'CE',D/2+4,18.4,1.6,{color:c,align:'center'});
+  ctx.restore();
+}
+function drawEsp(ctx,W,D){
+  ctx.fillStyle='#cbd0d5'; ctx.fillRect(0,0,W,D);
+  var r=lcg(11), i;
+  for(i=0;i<260;i++){
+    var y=r()*D;
+    ctx.strokeStyle='rgba(255,255,255,'+(0.04+r()*0.1).toFixed(3)+')';
+    ctx.lineWidth=0.02+r()*0.05; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y+(r()-0.5)*0.15); ctx.stroke();
+  }
+  var ink='#30353b', q=21, sz=4.6, x0=1.1, y0=1.1, m=sz/q;
+  ctx.fillStyle=ink;
+  for(var a=0;a<q;a++){ for(var b=0;b<q;b++){
+    var inF=(a<7&&b<7)||(a<7&&b>=q-7)||(a>=q-7&&b<7), on;
+    if(inF){ var aa=a<7?a:a-(q-7), bb=b<7?b:b-(q-7); on=aa===0||aa===6||bb===0||bb===6||(aa>=2&&aa<=4&&bb>=2&&bb<=4); }
+    else if((a===7&&(b<8||b>=q-8))||(b===7&&(a<8||a>=q-8))||(a===q-8&&b<8)||(b===q-8&&a<8)) on=false;
+    else on=r()<0.48;
+    if(on) ctx.fillRect(x0+b*m,y0+a*m,m+0.012,m+0.012);
+  }}
+  txt(ctx,'CE',W-3.4,3.3,2.3,{color:ink,weight:500,align:'center'});
+  ctx.strokeStyle=ink; ctx.lineWidth=0.2;
+  ctx.beginPath(); ctx.arc(3.3,D-4.2,0.85,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(2.9,D-4.6,0.9,0.2,1.4); ctx.stroke();
+  ctx.beginPath(); ctx.arc(2.9,D-4.6,0.45,0.2,1.4); ctx.stroke();
+  txt(ctx,'ESPRESSIF',4.6,D-4.2,1.3,{color:ink,weight:700});
+  txt(ctx,'ESP32-WROOM-32UE',W/2,D-2.0,1.2,{color:ink,weight:700,align:'center'});
+}
+function drawEcap(ctx,W,D){
+  ctx.fillStyle='#d3d6da'; ctx.fillRect(0,0,W,D);
+  ctx.fillStyle='#1c1d1f'; ctx.beginPath(); ctx.arc(W/2,D/2,W/2,Math.PI*0.64,Math.PI*1.36); ctx.closePath(); ctx.fill();
+  txt(ctx,'470',W*0.6,D*0.4,1.25,{color:'#1c1d1f',weight:700,align:'center'});
+  txt(ctx,'10V',W*0.6,D*0.64,1.0,{color:'#1c1d1f',weight:600,align:'center'});
+}
+
+/* ---------- board artwork ---------- */
+var H1C=[[3.5,3.5],[46.5,3.5],[3.5,76.5],[46.5,76.5]];
+var H1S=[[13.7,4.6],[24.7,4.6],[35.2,4.6],[13.7,75.3],[24.7,75.3],[35.2,75.3]];
+function tracer(ctx){
+  return function(w,p){ ctx.lineWidth=w; ctx.beginPath(); ctx.moveTo(p[0][0],p[0][1]); for(var i=1;i<p.length;i++) ctx.lineTo(p[i][0],p[i][1]); ctx.stroke(); };
+}
+function dot(ctx,x,y,r,c){ ctx.fillStyle=c; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); }
+function drawMain(ctx,W,L){
+  ctx.beginPath(); rrPath(ctx,0,0,W,L,1.2); ctx.fillStyle=MASK; ctx.fill();
+  ctx.save(); ctx.beginPath(); rrPath(ctx,0,0,W,L,1.2); ctx.clip();
+  ctx.strokeStyle=TRACE; ctx.lineCap='round'; ctx.lineJoin='round';
+  var tr=tracer(ctx), i, z;
+  tr(1.6,[[3.8,15.65],[10.4,15.65],[13.2,16.4]]);
+  tr(1.6,[[3.8,20.75],[8.2,20.75],[8.2,25.0],[6.4,27.65]]);
+  tr(1.6,[[26.6,27.65],[27.2,25.0],[27.2,22.4]]);
+  tr(1.4,[[27.0,16.2],[28.2,13.6],[30.6,12.4]]);
+  tr(1.2,[[13.0,22.0],[11.4,24.2]]);
+  tr(0.9,[[8.6,31.2],[8.6,34.6],[10.0,35.6]]);
+  tr(0.8,[[30.0,47.0],[32.8,49.0],[35.7,50.2]]);
+  tr(0.8,[[35.7,55.8],[37.4,56.6],[39.8,56.6]]);
+  tr(0.7,[[46.2,55.6],[47.2,57.0],[46.4,60.0],[44.4,60.4]]);
+  tr(0.5,[[40.4,64.8],[38.2,65.0],[34.4,65.0],[33.0,64.2]]);
+  tr(0.4,[[33.6,60.6],[33.0,60.6]]);
+  tr(0.4,[[33.6,63.0],[33.0,62.6]]);
+  tr(0.3,[[5.2,45.6],[8.6,45.6],[10.4,44.4],[14.0,44.4]]);
+  tr(0.3,[[5.2,49.4],[8.4,49.4],[10.4,47.6],[14.0,46.8]]);
+  tr(0.3,[[18.0,45.0],[18.9,44.2]]);
+  tr(0.3,[[18.0,46.6],[18.9,47.8]]);
+  tr(0.3,[[16.0,47.4],[16.2,50.2],[15.4,51.0]]);
+  tr(0.3,[[14.6,42.0],[14.8,43.8]]);
+  tr(0.3,[[22.2,42.0],[21.2,43.0],[20.2,43.0]]);
+  for(i=0;i<6;i++){ z=57+i*2.54; tr(0.3,[[13.4,z],[14.9,z]]); }
+  ctx.restore();
+
+  function ring(x,y,r,vias){
+    dot(ctx,x,y,r,PAD);
+    if(vias){ for(var k=0;k<8;k++){ var a=k*Math.PI/4+Math.PI/8; dot(ctx,x+Math.cos(a)*(r-0.7),y+Math.sin(a)*(r-0.7),0.24,'#8e8c84'); } }
+  }
+  H1C.forEach(function(h){ ring(h[0],h[1],3.1,true); });
+  H1S.forEach(function(h){ ring(h[0],h[1],3.5,false); });
+  for(i=0;i<6;i++){ z=57+i*2.54; dot(ctx,12.9,z,0.65,PAD); dot(ctx,12.9,z,0.33,'#0d2a18'); }
+
+  ctx.fillStyle=SILK; ctx.strokeStyle=SILK; ctx.lineJoin='round'; ctx.lineWidth=0.18;
+  ctx.beginPath(); ctx.moveTo(6.3,7.2); ctx.lineTo(9.0,11.8); ctx.lineTo(3.6,11.8); ctx.closePath(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(6.55,8.3); ctx.lineTo(5.75,9.9); ctx.lineTo(6.45,9.9); ctx.lineTo(6.0,11.2); ctx.lineTo(7.0,9.45); ctx.lineTo(6.3,9.45); ctx.closePath(); ctx.fill();
+  txt(ctx,'DANGER',2.1,9.6,1.45,{rot:-Math.PI/2,align:'center',weight:700});
+  txt(ctx,'HIGH VOLTAGE',0.85,9.6,0.55,{rot:-Math.PI/2,align:'center'});
+  txt(ctx,'N',8.5,15.65,1.2,{align:'center',weight:700});
+  txt(ctx,'L',8.5,20.75,1.2,{align:'center',weight:700});
+  txt(ctx,'~240VAC/1A',10.3,18.2,0.85,{rot:-Math.PI/2,align:'center'});
+  txt(ctx,'FUSE 5X20',1.9,27.65,0.95,{rot:-Math.PI/2,align:'center',weight:700});
+  txt(ctx,'Current Transformer',0.6,42.4,0.72,{});
+  txt(ctx,'CT+',5.6,45.6,0.85,{weight:700});
+  txt(ctx,'CT\u2212',5.6,49.4,0.85,{weight:700});
+  txt(ctx,'DS18B20',0.5,52.25,0.72,{weight:700});
+  [['SH',55.25],['\u2212',57.75],['SIG',60.25],['+',62.75]].forEach(function(a){ txt(ctx,a[0],8.1,a[1],0.72,{weight:700}); });
+  txt(ctx,'3.3V',8.1,64.2,0.62,{});
+  txt(ctx,'UPLOAD',11.3,66.3,0.66,{rot:-Math.PI/2,align:'center',weight:700});
+  txt(ctx,'BOOT',5.2,67.0,0.75,{rot:Math.PI/2,align:'center',weight:700});
+  txt(ctx,'RST',5.2,72.0,0.75,{rot:Math.PI/2,align:'center',weight:700});
+  ctx.lineWidth=0.14; ctx.beginPath(); rrPath(ctx,7.4,71.3,3.4,1.9,0.5); ctx.stroke();
+  txt(ctx,'USB',9.1,72.25,0.9,{align:'center',weight:700});
+  txt(ctx,'Serial',9.1,74.0,0.7,{align:'center'});
+  ctx.lineWidth=0.15; ctx.strokeRect(14.2,50.9,19.2,20.3);
+  ctx.strokeRect(27.5,14.1,22.0,34.3);
+  txt(ctx,'PW',36.0,60.6,0.7,{weight:700});
+  txt(ctx,'LED2',36.0,63.0,0.7,{weight:700});
+  txt(ctx,'+',38.4,51.0,1.0,{align:'center',weight:700});
+  ctx.beginPath(); ctx.moveTo(15.2,79.4); ctx.lineTo(15.2,71.8); ctx.lineTo(40.8,71.8); ctx.lineTo(40.8,79.4); ctx.stroke();
+
+  ctx.globalCompositeOperation='destination-out';
+  H1C.concat(H1S).forEach(function(h){ dot(ctx,h[0],h[1],1.6,'#000'); });
+  ctx.globalCompositeOperation='source-over';
+}
+function drawSensor(ctx,W,L){
+  ctx.beginPath(); rrPath(ctx,0,0,W,L,0.8); ctx.fillStyle=MASK; ctx.fill();
+  ctx.save(); ctx.beginPath(); rrPath(ctx,0,0,W,L,0.8); ctx.clip();
+  ctx.strokeStyle=TRACE; ctx.lineCap='round'; ctx.lineJoin='round';
+  var tr=tracer(ctx), i, z;
+  tr(0.45,[[9.6,7.75],[11.2,7.75],[12.0,8.6]]);
+  tr(0.45,[[18.4,5.25],[16.8,5.25],[14.2,3.2],[14.2,1.0]]);
+  tr(0.45,[[9.6,5.25],[11.0,5.25],[11.0,2.6],[12.93,1.0]]);
+  tr(0.45,[[18.4,2.75],[16.6,2.75],[15.47,1.0]]);
+  tr(0.45,[[9.6,10.25],[11.0,11.6]]);
+  tr(0.45,[[18.4,7.75],[17.4,7.75],[17.2,9.0]]);
+  tr(0.45,[[9.6,2.75],[10.4,2.75]]);
+  tr(0.45,[[18.4,10.25],[17.6,11.5]]);
+  tr(0.3,[[13.6,5.0],[14.6,4.0]]);
+  tr(0.3,[[12.0,5.0],[11.0,5.0]]);
+  ctx.restore();
+
+  ctx.fillStyle=PAD;
+  for(i=0;i<4;i++){ z=2.75+2.5*i; ctx.fillRect(7.0,z-0.5,2.8,1.0); ctx.fillRect(18.2,z-0.5,2.8,1.0); }
+  [12.93,14.2,15.47].forEach(function(x){ dot(ctx,x,1.0,0.55,PAD); });
+  ctx.fillStyle=PAD; ctx.fillRect(11.6,4.5,0.8,1.0); ctx.fillRect(13.2,4.5,0.8,1.0);
+  [[12.0,8.6],[11.0,11.6],[17.2,9.0]].forEach(function(v){ dot(ctx,v[0],v[1],0.42,PAD); dot(ctx,v[0],v[1],0.2,'#0d2a18'); });
+  dot(ctx,14.6,9.6,3.0,PAD);
+
+  ctx.fillStyle=SILK; ctx.strokeStyle=SILK;
+  txt(ctx,'DS18B20',6.6,1.25,1.0,{weight:700});
+  ctx.beginPath(); ctx.moveTo(7.1,2.15); ctx.lineTo(8.1,2.15); ctx.lineTo(7.6,2.95); ctx.closePath(); ctx.fill();
+  txt(ctx,'Temp',17.2,0.8,0.85,{weight:700});
+  txt(ctx,'Sensor',17.2,1.75,0.85,{weight:700});
+  ctx.lineWidth=0.15; ctx.beginPath(); ctx.arc(14.2,0.9,2.75,0,Math.PI*2); ctx.stroke();
+  [['SH',2.75],['\u2212',5.25],['SIG',7.75],['+',10.25]].forEach(function(a){ txt(ctx,a[0],10.7,a[1],0.75,{rot:-Math.PI/2,align:'center',weight:700}); });
+  txt(ctx,'3.3V',7.2,12.2,0.8,{weight:700});
+  [['+',2.75],['SIG',5.25],['\u2212',7.75],['SH',10.25]].forEach(function(a){ txt(ctx,a[0],17.8,a[1],0.75,{rot:Math.PI/2,align:'center',weight:700}); });
+  ctx.fillStyle=SILK; ctx.beginPath(); ctx.moveTo(20.1,12.6); ctx.lineTo(21.1,12.6); ctx.lineTo(20.6,11.8); ctx.closePath(); ctx.fill();
+  ctx.strokeRect(11.3,4.2,3.0,1.6);
+
+  ctx.globalCompositeOperation='destination-out';
+  dot(ctx,14.6,9.6,1.6,'#000');
+  ctx.globalCompositeOperation='source-over';
+}
+
+/* ---------- boards ---------- */
+function makeBoard(W,L,rad,holes,holeR,ppm,draw){
+  var grp=new T.Group();
+  var s=new T.Shape(); rrPath(s,-W/2,-L/2,W,L,rad);
+  holes.forEach(function(h){ var p=new T.Path(); p.absarc(h[0]-W/2,L/2-h[1],holeR,0,Math.PI*2,true); s.holes.push(p); });
+  var g=new T.ExtrudeGeometry(s,{depth:PCB,bevelEnabled:false,curveSegments:24});
+  g.rotateX(-Math.PI/2);
+  var pcbG=new T.Group();
+  pcbG.add(new T.Mesh(g,[MAT.mask,MAT.maskSide]));
+  var top=new T.Mesh(planeTop(W,L),new T.MeshStandardMaterial({map:canvasTex(W,L,ppm,draw),roughness:0.42,metalness:0,alphaTest:0.5}));
+  top.position.y=PCB+0.012; pcbG.add(top);
+  grp.add(pcbG);
+  return {grp:grp,pcbG:pcbG,W:W,L:L};
+}
+function placer(b){
+  return function(obj,cx,cz,y,parent){
+    obj.position.set(cx-b.W/2,y==null?PCB:y,cz-b.L/2);
+    (parent||b.grp).add(obj); return obj;
+  };
+}
+function sub(b){ var g=new T.Group(); b.grp.add(g); return g; }
+
+/* ---------- component builders ---------- */
+function terminalBlock(n,pitch,depth,h,mat){
+  var g=new T.Group(), len=n*pitch, sx=depth*0.12;
+  g.add(mrbox(depth,len,h,0.35,0.2,mat));
+  for(var i=0;i<n;i++){
+    var z=(i-(n-1)/2)*pitch;
+    var ring=new T.Mesh(new T.RingGeometry(1.25,1.6,36),MAT.hole); ring.rotation.x=-Math.PI/2; ring.position.set(sx,h+0.012,z); g.add(ring);
+    var head=new T.Mesh(new T.CylinderGeometry(1.25,1.25,0.3,36),MAT.steel); head.position.set(sx,h-0.13,z); g.add(head);
+    var slot=mbox(2.0,0.34,0.12,MAT.hole); slot.position.set(sx,h-0.08,z); g.add(slot);
+    var ent=mbox(0.3,Math.min(3.2,pitch*0.72),Math.min(3.0,h*0.34),MAT.hole); ent.position.set(-depth/2-0.12,h*0.2,z); g.add(ent);
+    var cl=mbox(0.1,Math.min(2.4,pitch*0.55),0.45,MAT.tin); cl.position.set(-depth/2-0.3,h*0.2+0.35,z); g.add(cl);
+  }
+  return g;
+}
+function jstSide(len,depth,h,n,pitch,dir,leadLen){
+  var g=new T.Group(), w=0.7;
+  function add(bw,bd,bh,x,y,z,m){ var o=mbox(bw,bd,bh,m||MAT.white); o.position.set(x,y,z); g.add(o); return o; }
+  add(depth,len,0.6,0,0,0);
+  add(depth,len,0.8,0,h-0.8,0);
+  add(depth,w,h,0,0,-(len/2-w/2));
+  add(depth,w,h,0,0,(len/2-w/2));
+  add(w,len,h,-dir*(depth/2-w/2),0,0);
+  add(1.6,len*0.46,0.45,dir*(depth/2-1.4),h,0);
+  add(2.2,0.9,h*0.55,-dir*(depth/2-1.5),0,-(len/2+0.45));
+  add(2.2,0.9,h*0.55,-dir*(depth/2-1.5),0,(len/2+0.45));
+  for(var i=0;i<n;i++){
+    var z=(i-(n-1)/2)*pitch;
+    add(depth-2.4,0.64,0.64,dir*0.3,h*0.45-0.32,z,MAT.tin);
+    if(leadLen) add(leadLen,0.64,0.2,-dir*(depth/2+leadLen/2-0.3),0,z,MAT.tin);
+  }
+  return g;
+}
+function esp32(){
+  var g=new T.Group(), i, p;
+  g.add(mbox(18,19.2,0.8,MAT.modPcb));
+  for(i=0;i<14;i++){ var z=-8.6+i*1.27; [-1,1].forEach(function(sx){ p=mbox(0.9,0.6,0.84,MAT.gold); p.position.set(sx*8.7,-0.02,z); g.add(p); }); }
+  for(i=0;i<10;i++){ p=mbox(0.6,0.9,0.84,MAT.gold); p.position.set((i-4.5)*1.27,-0.02,-9.3); g.add(p); }
+  var A=mbox(16.6,15.8,2.4,MAT.shield); A.position.set(0,0.8,-1.3); g.add(A);
+  var B=mbox(11.6,1.8,2.4,MAT.shield); B.position.set(2.5,0.8,7.5); g.add(B);
+  var d=decalTop(16.4,15.6,30,drawEsp,3.2,{rough:0.38,metal:0.7}); d.position.z=-1.3; g.add(d);
+  var ub=mbox(2.6,2.6,0.3,MAT.tin); ub.position.set(-5.8,0.8,7.5); g.add(ub);
+  var us=new T.Mesh(new T.CylinderGeometry(0.95,0.95,0.9,28),MAT.gold); us.position.set(-5.8,1.55,7.5); g.add(us);
+  var up=new T.Mesh(new T.CylinderGeometry(1.15,1.15,0.7,28),MAT.silver); up.position.set(-5.8,2.35,7.5); g.add(up);
+  return g;
+}
+function ycap(){
+  var g=new T.Group();
+  [-1.25,1.25].forEach(function(x){ var l=new T.Mesh(new T.CylinderGeometry(0.25,0.25,2.6,8),MAT.tin); l.position.set(x,1.3,0); g.add(l); });
+  var d=new T.Mesh(new T.SphereGeometry(3.4,40,24),MAT.blueCap); d.scale.set(1,0.36,1); d.rotation.x=-0.55; d.position.set(0,3.3,0); g.add(d);
+  return g;
+}
+function screw(s){
+  var g=new T.Group();
+  var washer=new T.Mesh(new T.CylinderGeometry(3.3*s,3.3*s,0.45,48),MAT.steel); washer.position.y=0.225; g.add(washer);
+  for(var k=0;k<16;k++){ var a=k/16*Math.PI*2; var t=mbox(0.55*s,0.28*s,0.12,MAT.steel); t.position.set(Math.cos(a)*3.0*s,0.45,Math.sin(a)*3.0*s); t.rotation.y=-a; g.add(t); }
+  var base=new T.Mesh(new T.CylinderGeometry(2.7*s,2.75*s,0.5,48),MAT.silver); base.position.y=0.7; g.add(base);
+  var dome=new T.Mesh(new T.SphereGeometry(2.7*s,48,16,0,Math.PI*2,0,Math.PI/2),MAT.silver); dome.scale.y=0.36; dome.position.y=0.95; g.add(dome);
+  var top=0.95+2.7*s*0.36;
+  var c1=mbox(3.0*s,0.62*s,0.34,MAT.hole); c1.position.y=top-0.3; g.add(c1);
+  var c2=c1.clone(); c2.rotation.y=Math.PI/2; g.add(c2);
+  return g;
+}
+function vchip(){
+  var g=new T.Group();
+  g.add(mrbox(6.6,6.6,0.9,0.6,0.15,MAT.blackMatte));
+  var can=new T.Mesh(new T.CylinderGeometry(3.15,3.15,5.0,56),MAT.alu); can.position.y=3.4; g.add(can);
+  var groove=new T.Mesh(new T.TorusGeometry(3.12,0.12,8,56),MAT.dark); groove.rotation.x=Math.PI/2; groove.position.y=1.6; g.add(groove);
+  var top=new T.Mesh(new T.CircleGeometry(3.1,56),new T.MeshStandardMaterial({map:canvasTex(6.3,6.3,40,drawEcap),roughness:0.35,metalness:0.6}));
+  top.rotation.x=-Math.PI/2; top.position.y=5.912; g.add(top);
+  [-1,1].forEach(function(sx){ var t=mbox(0.8,1.2,0.25,MAT.tin); t.position.set(sx*3.5,0,0); g.add(t); });
+  return g;
+}
+function sot223(){
+  var g=new T.Group();
+  g.add(mrbox(6.5,3.5,1.6,0.15,0.1,MAT.black));
+  var tab=mbox(3.0,1.5,0.25,MAT.tin); tab.position.set(0,0,-2.35); g.add(tab);
+  [-2.3,0,2.3].forEach(function(x){ var l=mbox(0.7,1.3,0.25,MAT.tin); l.position.set(x,0,2.3); g.add(l); });
+  return g;
+}
+function sma(){
+  var g=new T.Group();
+  g.add(mrbox(2.6,4.3,2.1,0.2,0.12,MAT.black));
+  var band=mbox(2.2,0.6,0.03,MAT.greyBand); band.position.set(0,2.1,-1.4); g.add(band);
+  [-1,1].forEach(function(s){ var t=mbox(1.5,0.6,0.28,MAT.tin); t.position.set(0,0,s*2.35); g.add(t); });
+  return g;
+}
+function tant(){
+  var g=new T.Group();
+  g.add(mbox(2.4,1.6,1.6,MAT.tant));
+  var b=mbox(0.5,1.62,0.03,MAT.tantBand); b.position.set(-0.85,1.6,0); g.add(b);
+  [-1,1].forEach(function(s){ var t=mbox(0.45,1.2,0.9,MAT.tin); t.position.set(s*1.42,0,0); g.add(t); });
+  return g;
+}
+var GLOW_TEX=(function(){
+  var c=document.createElement('canvas'); c.width=c.height=128; var x=c.getContext('2d');
+  var g=x.createRadialGradient(64,64,0,64,64,64);
+  g.addColorStop(0,'rgba(255,255,255,0.9)'); g.addColorStop(0.15,'rgba(255,255,255,0.6)');
+  g.addColorStop(0.45,'rgba(255,255,255,0.16)'); g.addColorStop(1,'rgba(255,255,255,0)');
+  x.fillStyle=g; x.fillRect(0,0,128,128);
+  var t=new T.CanvasTexture(c); t.encoding=T.sRGBEncoding; return t;
+})();
+var LEDS={};
+function led0805(key,hex){
+  var g=new T.Group();
+  g.add(mbox(1.4,1.25,0.4,MAT.ledBase));
+  var lm=std(0xfff4c7,0.15,0,{transparent:true,opacity:0.85}); lm.userData.off=lm.color.clone(); lm.userData.onc=new T.Color(hex).convertSRGBToLinear();
+  lm.emissive=new T.Color(hex).convertSRGBToLinear(); lm.emissiveIntensity=0;
+  var lens=mbox(1.3,1.05,0.35,lm); lens.position.y=0.4; g.add(lens);
+  var lit=new T.MeshBasicMaterial({color:new T.Color(hex),toneMapped:false});
+  [-1,1].forEach(function(s){ var t=mbox(0.32,1.25,0.42,MAT.tin); t.position.set(s*0.84,0,0); g.add(t); });
+  var halo=new T.Sprite(new T.SpriteMaterial({map:GLOW_TEX,color:new T.Color(hex),toneMapped:false,blending:T.NormalBlending,depthWrite:false,depthTest:false,transparent:true,opacity:0}));
+  halo.scale.set(7,7,1); halo.position.y=1.0; halo.renderOrder=5; g.add(halo);
+  var pl=new T.PointLight(hex,0,26,2); pl.position.y=1.6; g.add(pl);
+  LEDS[key]={lens:lm,lit:lit,mesh:lens,halo:halo,light:pl,grp:g,on:null};
+  return g;
+}
+function setLed(key,on){
+  var L=LEDS[key]; if(!L||L.on===on) return; L.on=on;
+  L.mesh.material=on?L.lit:L.lens;
+  L.halo.material.opacity=on?1:0; L.light.intensity=on?1.2:0;
+}
+/* blink patterns copied from firmware lib/StatusLED/StatusLED.cpp (ms, on/off alternating, first is ON) */
+var LED_PAT={solid:null,off:[],fast:[100,100],slow:[500,500],err:[80,80,80,700]};
+function ledAt(mode,t){
+  var p=LED_PAT[mode]; if(p===null) return true; if(!p.length) return false;
+  var per=p.reduce(function(a,b){ return a+b; },0), r=t%per;
+  for(var i=0;i<p.length;i++){ if(r<p[i]) return i%2===0; r-=p[i]; }
+  return false;
+}
+function chip(kind,rot){
+  var g=new T.Group();
+  if(kind==='r'){
+    g.add(mbox(1.1,0.8,0.45,MAT.resBody));
+    [-1,1].forEach(function(s){ var t=mbox(0.26,0.82,0.47,MAT.tin); t.position.x=s*0.67; g.add(t); });
+  } else {
+    g.add(mbox(1.0,0.78,0.5,MAT.ceramic));
+    [-1,1].forEach(function(s){ var t=mbox(0.3,0.8,0.52,MAT.tin); t.position.x=s*0.65; g.add(t); });
+  }
+  if(rot) g.rotation.y=Math.PI/2;
+  return g;
+}
+function icSmall(){
+  var g=new T.Group();
+  g.add(mrbox(3.2,3.4,1.0,0.12,0.1,MAT.black));
+  var d=new T.Mesh(new T.CircleGeometry(0.28,20),MAT.dark); d.rotation.x=-Math.PI/2; d.position.set(-0.9,1.012,-1.0); g.add(d);
+  for(var i=0;i<5;i++){ var z=(i-2)*0.65; [-1,1].forEach(function(s){ var l=mbox(0.75,0.28,0.2,MAT.tin); l.position.set(s*1.85,0,z); g.add(l); }); }
+  return g;
+}
+function tact(){
+  var g=new T.Group();
+  g.add(mbox(3.6,3.0,0.8,MAT.dark));
+  var pl=mbox(3.3,2.7,0.2,MAT.steel); pl.position.y=0.8; g.add(pl);
+  var a=new T.Mesh(new T.CylinderGeometry(0.8,0.85,0.55,28),MAT.blackMatte); a.position.y=1.275; g.add(a);
+  [-1,1].forEach(function(sx){ [-1,1].forEach(function(sz){ var l=mbox(0.6,0.55,0.18,MAT.tin); l.position.set(sx*2.05,0,sz*1.0); g.add(l); }); });
+  return g;
+}
+function to92(){
+  var g=new T.Group();
+  var s=new T.Shape(); s.moveTo(-1.9,0); s.lineTo(1.9,0); s.absarc(0,1.3,2.3,-0.6,Math.PI+0.6,false); s.lineTo(-1.9,0);
+  var geo=new T.ExtrudeGeometry(s,{depth:4.8,bevelEnabled:true,bevelThickness:0.15,bevelSize:0.12,bevelSegments:2,curveSegments:28});
+  var body=new T.Mesh(geo,MAT.black); body.position.set(0,1.12,-8.25); g.add(body);
+  [-1.27,0,1.27].forEach(function(x){
+    var hz=mbox(0.42,4.4,0.36,MAT.tin); hz.position.set(x,2.15,-1.2); g.add(hz);
+    var vt=mbox(0.42,0.42,2.5,MAT.tin); vt.position.set(x,0,1.0); g.add(vt);
+  });
+  return g;
+}
+function antenna(b){
+  var g=new T.Group();
+  function P(x,y,z){ return new T.Vector3(x-b.W/2,y,z-b.L/2); }
+  var pts=[P(17.0,3.95,67.7),P(15.7,5.5,66.0),P(14.0,4.6,63.6),P(11.4,2.5,59.6),P(9.0,2.2,54.6),P(6.6,2.2,47.2),P(4.4,2.2,38.0),P(2.7,2.25,31.0),P(1.4,2.25,26.2),P(-0.9,1.9,23.4),P(-1.4,1.3,18.0),P(-2.6,0.65,10.5),P(-4.4,0.6,2.4),P(-5.6,1.1,-1.4),P(-6.0,1.4,-3.2)];
+  var curve=new T.CatmullRomCurve3(pts,false,'centripetal');
+  g.add(new T.Mesh(new T.TubeGeometry(curve,260,0.55,10,false),MAT.cable));
+  var a=P(-6.0,1.4,-3.2), e=P(-10.2,1.4,-28.7);
+  g.add(rod(a,e,1.42,1.36,MAT.cable));
+  var ca=new T.Mesh(new T.SphereGeometry(1.42,20,12),MAT.cable); ca.position.copy(a); g.add(ca);
+  var cb=new T.Mesh(new T.SphereGeometry(1.36,20,12),MAT.cable); cb.position.copy(e); g.add(cb);
+  var w0=P(-10.2,1.0,-29.6), w1=P(-10.7,0.45,-45.2);
+  g.add(rod(w0,w1,0.42,0.42,MAT.steel));
+  var ts=new T.Mesh(new T.SphereGeometry(0.42,12,8),MAT.steel); ts.position.copy(w1); g.add(ts);
+  return g;
+}
+
+
+
+/* ================= cabinet scene ================= */
+function cssColor(name,fallback){
+  var v=getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return new T.Color(v||fallback).convertSRGBToLinear();
+}
+function V(x,y,z){ return new T.Vector3(x,y,z); }
+function basis(o,x,y,z){ o.quaternion.setFromRotationMatrix(new T.Matrix4().makeBasis(x,y,z)); return o; }
+function cbox(sx,sy,sz,mat){ return new T.Mesh(new T.BoxGeometry(sx,sy,sz),mat); }
+function boxAt(par,mat,cx,cy,cz,sx,sy,sz){ var m=cbox(sx,sy,sz,mat); m.position.set(cx,cy,cz); par.add(m); return m; }
+var PX=-170, PY=30, PZ=20;
+function P(u,v,w){ return V(u+PX,v+PY,PZ+w); }
+function pbox(par,mat,u0,u1,v0,v1,w0,w1){ return boxAt(par,mat,(u0+u1)/2+PX,(v0+v1)/2+PY,PZ+(w0+w1)/2,u1-u0,v1-v0,w1-w0); }
+function shadowAll(o){ o.traverse(function(c){ if(c.isMesh){ c.castShadow=true; c.receiveShadow=true; } }); return o; }
+function cylAxis(r1,r2,h,seg,axis,mat){
+  var g=new T.CylinderGeometry(r1,r2,h,seg);
+  if(axis==='x') g.rotateZ(-Math.PI/2); else if(axis==='z') g.rotateX(Math.PI/2);
+  return new T.Mesh(g,mat);
+}
+function mergeBoxes(list,mat){
+  var pos=[],nor=[],idx=[],off=0;
+  list.forEach(function(b){
+    var g=new T.BoxGeometry(b[3],b[4],b[5]); g.translate(b[0],b[1],b[2]);
+    var p=g.attributes.position.array,n=g.attributes.normal.array,ix=g.index.array,i;
+    for(i=0;i<p.length;i++){ pos.push(p[i]); nor.push(n[i]); }
+    for(i=0;i<ix.length;i++) idx.push(ix[i]+off);
+    off+=p.length/3; g.dispose();
+  });
+  var geo=new T.BufferGeometry();
+  geo.setAttribute('position',new T.Float32BufferAttribute(pos,3));
+  geo.setAttribute('normal',new T.Float32BufferAttribute(nor,3));
+  geo.setIndex(idx);
+  return new T.Mesh(geo,mat);
+}
+function frontPlane(w,h,ppm,draw,rough){
+  return new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshStandardMaterial({map:canvasTex(w,h,ppm,draw),roughness:rough==null?0.5:rough}));
+}
+
+var M2={
+  enc:std(0xd9d9d3,0.55,0.05), plate:std(0xc2c6c9,0.4,0.6), duct:std(0xc8cacc,0.62,0), ductCover:std(0xd2d4d6,0.55,0),
+  rail:std(0xc9cdd1,0.32,0.85), dev:std(0xf3f2ee,0.5,0), devDark:std(0x34383d,0.55,0), toggle:std(0x243552,0.4,0),
+  tbGrey:std(0xa0a7ac,0.55,0), tbBlue:std(0x2d6cc0,0.5,0), tbGreen:std(0x2f9a4c,0.5,0), tbYellow:std(0xe8c520,0.5,0),
+  brown:std(0x7b4a2b,0.45,0), blueW:std(0x2f6fb5,0.45,0), black:std(0x1b1c1e,0.5,0), red:std(0xb8322a,0.45,0),
+  yellowW:std(0xe7c21d,0.45,0), jacket:std(0x8c9196,0.6,0), coax:std(0x2b2e33,0.5,0), gland:std(0x2c2e31,0.5,0),
+  brass:std(0xc7a456,0.35,0.85), rubber:std(0x151617,0.85,0), clip:std(0x5d6268,0.5,0), tie:std(0xf0efe9,0.6,0),
+  wrap:std(0x1d1e20,0.6,0), ctBody:std(0x1e1f21,0.55,0), hole:std(0x0d0f10,0.9,0), gasket:std(0x18191a,0.9,0)
+};
+var gyCan=document.createElement('canvas'); gyCan.width=8; gyCan.height=64;
+(function(){ var c=gyCan.getContext('2d'); c.fillStyle='#2f9a4c'; c.fillRect(0,0,8,64); c.fillStyle='#e8c520'; c.fillRect(0,4,8,20); c.fillRect(0,36,8,20); })();
+var gyTex=new T.CanvasTexture(gyCan); gyTex.encoding=T.sRGBEncoding; gyTex.wrapS=gyTex.wrapT=T.RepeatWrapping;
+M2.gy=new T.MeshStandardMaterial({map:gyTex,roughness:0.45});
+
+var PARTS=[], PICK=[];
+function part(obj,cat,th,en,multi){
+  obj.userData.info={th:th,en:en,cat:cat,multi:!!multi};
+  shadowAll(obj); PICK.push(obj); PARTS.push(obj); return obj;
+}
+var CAT_ORDER=['dev','door','wire','cab'];
+var CAT_NAME={dev:'อุปกรณ์บนแผง',door:'ประตูและเซนเซอร์',wire:'สายไฟและการยึดสาย',cab:'ตู้และโครงสร้าง'};
+
+/* ---------- wires ---------- */
+function curveFrom(pts,rad){
+  rad=rad==null?7:rad;
+  var out=[pts[0].clone()];
+  for(var i=1;i<pts.length-1;i++){
+    var a=pts[i-1],p=pts[i],b=pts[i+1];
+    var din=p.clone().sub(a),dout=b.clone().sub(p),li=din.length(),lo=dout.length();
+    if(li<1e-6||lo<1e-6){ out.push(p.clone()); continue; }
+    din.normalize(); dout.normalize();
+    var r1=Math.min(rad,li*0.45),r2=Math.min(rad,lo*0.45);
+    out.push(p.clone().addScaledVector(din,-r1));
+    out.push(p.clone().addScaledVector(din,-r1*0.3).addScaledVector(dout,r2*0.3));
+    out.push(p.clone().addScaledVector(dout,r2));
+  }
+  out.push(pts[pts.length-1].clone());
+  return new T.CatmullRomCurve3(out,false,'centripetal');
+}
+function wire(par,pts,r,mat,rad){
+  var c=curveFrom(pts,rad);
+  var segs=Math.max(12,Math.ceil(c.getLength()/3));
+  var m=new T.Mesh(new T.TubeGeometry(c,segs,r,8,false),mat); par.add(m); return m;
+}
+var WIRE_PTS=[];
+function pw(par,list,r,mat,rad){
+  var m=wire(par,list.map(function(a){ return P(a[0],a[1],a[2]); }),r,mat,rad);
+  var c=m.geometry.parameters.path, n=Math.ceil(c.getLength());
+  for(var i=0;i<=n;i++){ var q=c.getPointAt(i/n); WIRE_PTS.push([q.x,q.y,q.z,r]); }
+  return m;
+}
+
+/* ---------- enclosure ---------- */
+var EW=400,EH=600,ED=200,ET=1.5,LIP=18;
+var encG=new T.Group(); scene.add(encG);
+boxAt(encG,M2.enc,0,EH/2,ET/2,EW,EH,ET);
+boxAt(encG,M2.enc,-EW/2+ET/2,EH/2,ED/2,ET,EH,ED);
+boxAt(encG,M2.enc,EW/2-ET/2,EH/2,ED/2,ET,EH,ED);
+boxAt(encG,M2.enc,0,EH-ET/2,ED/2,EW-2*ET,ET,ED);
+boxAt(encG,M2.enc,0,ET/2,ED/2,EW-2*ET,ET,ED);
+boxAt(encG,M2.enc,-EW/2+LIP/2,EH/2,ED-ET/2,LIP,EH,ET);
+boxAt(encG,M2.enc,EW/2-LIP/2,EH/2,ED-ET/2,LIP,EH,ET);
+boxAt(encG,M2.enc,0,EH-LIP/2,ED-ET/2,EW-2*LIP,LIP,ET);
+boxAt(encG,M2.enc,0,LIP/2,ED-ET/2,EW-2*LIP,LIP,ET);
+boxAt(encG,M2.enc,-EW/2+LIP+ET/2,EH/2,ED-11,ET,EH-2*LIP,19);
+boxAt(encG,M2.enc,EW/2-LIP-ET/2,EH/2,ED-11,ET,EH-2*LIP,19);
+boxAt(encG,M2.enc,0,EH-LIP-ET/2,ED-11,EW-2*LIP,ET,19);
+boxAt(encG,M2.enc,0,LIP+ET/2,ED-11,EW-2*LIP,ET,19);
+[110,490].forEach(function(y){
+  var bar=cylAxis(4.6,4.6,46,20,'y',M2.enc); bar.position.set(EW/2,y,ED+21); encG.add(bar);
+  boxAt(encG,M2.enc,EW/2+0.8,y,ED+8,1.6,40,26);
+  var pin=cylAxis(2,2,52,12,'y',M2.rail); pin.position.set(EW/2,y,ED+21); encG.add(pin);
+});
+var bodyStud=cylAxis(3,3,10,12,'x',M2.brass); bodyStud.position.set(EW/2-ET-5,520,186); encG.add(bodyStud);
+part(encG,'cab','ตู้เหล็กติดผนัง','Steel wall-mount enclosure 400 × 600 × 200 mm, RAL 7035 (assumed size)');
+
+/* ---------- mounting plate ---------- */
+var plateG=new T.Group(); scene.add(plateG);
+pbox(plateG,M2.plate,0,340,0,540,-2.5,0);
+[[14,14],[326,14],[14,526],[326,526]].forEach(function(s){
+  var st=cylAxis(4,4,16,16,'z',M2.rail); st.position.copy(P(s[0],s[1],-10.5)); plateG.add(st);
+  var nut=cylAxis(5.5,5.5,4,6,'z',M2.rail); nut.position.copy(P(s[0],s[1],2)); plateG.add(nut);
+});
+part(plateG,'cab','แผ่นติดตั้งอุปกรณ์','Galvanised mounting plate 340 × 540 mm');
+
+/* ---------- wire ducts ---------- */
+var ductG=new T.Group(); scene.add(ductG); var coverG=new T.Group(); ductG.add(coverG);
+var fingers=[];
+function duct(u0,u1,v0,v1){
+  var vert=(v1-v0)>(u1-u0), H=40, t=1.8, k;
+  pbox(ductG,M2.duct,u0,u1,v0,v1,0,t);
+  if(vert){
+    pbox(ductG,M2.duct,u0,u0+t,v0,v1,0,8); pbox(ductG,M2.duct,u1-t,u1,v0,v1,0,8);
+    for(k=v0+4;k+6<=v1-2;k+=12){ fingers.push([u0+t/2,k+3,24,t,6,32]); fingers.push([u1-t/2,k+3,24,t,6,32]); }
+  } else {
+    pbox(ductG,M2.duct,u0,u1,v0,v0+t,0,8); pbox(ductG,M2.duct,u0,u1,v1-t,v1,0,8);
+    for(k=u0+4;k+6<=u1-2;k+=12){ fingers.push([k+3,v0+t/2,24,6,t,32]); fingers.push([k+3,v1-t/2,24,6,t,32]); }
+  }
+  pbox(coverG,M2.ductCover,u0-0.6,u1+0.6,v0,v1,H,H+2.2);
+}
+duct(10,40,15,525); duct(300,330,15,525);
+duct(40,300,495,525); duct(40,300,340,370); duct(40,300,140,170);
+part(ductG,'cab','รางเดินสาย 30 × 40 mm','Slotted wire duct with covers',true);
+
+/* ---------- DIN rails ---------- */
+var railG=new T.Group(); scene.add(railG);
+function dinRail(u0,u1,vc){
+  pbox(railG,M2.rail,u0,u1,vc-13.5,vc+13.5,0,1);
+  pbox(railG,M2.rail,u0,u1,vc-14.5,vc-13.5,0,7.5); pbox(railG,M2.rail,u0,u1,vc+13.5,vc+14.5,0,7.5);
+  pbox(railG,M2.rail,u0,u1,vc-17.5,vc-14.5,6.5,7.5); pbox(railG,M2.rail,u0,u1,vc+14.5,vc+17.5,6.5,7.5);
+  for(var u=u0+8;u+15<u1;u+=25) pbox(railG,M2.hole,u,u+15,vc-2.6,vc+2.6,1,1.06);
+}
+dinRail(50,290,430); dinRail(50,290,90);
+part(railG,'cab','ราง DIN 35 mm สองแถว','35 mm top-hat DIN rails',true);
+
+/* ---------- DIN devices ---------- */
+function drawMcbFront(tag,rating){
+  return function(c,w,h){
+    c.fillStyle='#f6f5f1'; c.fillRect(0,0,w,h);
+    txt(c,tag,2.0,3.6,3.2,{color:'#1b2329',weight:700});
+    txt(c,'I ON',w-2.0,3.6,2.0,{color:'#5b6872',weight:600,align:'right'});
+    c.fillStyle='#2b2f34'; c.fillRect(2,8.5,w-4,13.5);
+    txt(c,rating,w/2,27.5,4.2,{color:'#1b2329',weight:700,align:'center'});
+    txt(c,'230/400V~',w/2,33,2.2,{color:'#3a434a',weight:500,align:'center'});
+    c.strokeStyle='#1b2329'; c.lineWidth=0.35; c.strokeRect(w/2-6,36,12,4.6);
+    txt(c,'6000',w/2,38.4,2.4,{color:'#1b2329',weight:700,align:'center'});
+  };
+}
+function mcbDev(poles,tag,rating){
+  var g=new T.Group(), W=18*poles-0.4, i;
+  boxAt(g,M2.dev,0,0,22.5,W,85,45);
+  boxAt(g,M2.dev,0,0,53.5,W,45,17);
+  var lab=frontPlane(W-1.2,43,14,drawMcbFront(tag,rating)); lab.position.set(0,0,62.02); g.add(lab);
+  boxAt(g,M2.toggle,0,8.2,67,W-7,8,10);
+  boxAt(g,M2.toggle,0,11.4,72.1,W-7,1.6,0.4);
+  for(i=0;i<poles;i++){
+    var x=(i-(poles-1)/2)*18;
+    [-1,1].forEach(function(s){
+      boxAt(g,M2.hole,x,s*36,45.15,7,7,0.4);
+      var sc=cylAxis(2.6,2.6,0.8,16,'z',M2.rail); sc.position.set(x,s*36,45.2); g.add(sc);
+      boxAt(g,M2.devDark,x,s*36,45.65,0.8,4.4,0.3);
+      boxAt(g,M2.hole,x,s*42.6,22,8,0.4,8);
+    });
+  }
+  boxAt(g,M2.devDark,0,-44,4,8,3,6);
+  return g;
+}
+var TB_PROFILE=[[-25,0],[25,0],[25,26],[16,38],[8,44],[-8,44],[-16,38],[-25,26]];
+function tbGeo(width){
+  var s=new T.Shape(); s.moveTo(TB_PROFILE[0][0],TB_PROFILE[0][1]);
+  for(var i=1;i<TB_PROFILE.length;i++) s.lineTo(TB_PROFILE[i][0],TB_PROFILE[i][1]);
+  s.closePath();
+  var g=new T.ExtrudeGeometry(s,{depth:width,bevelEnabled:false}); g.translate(0,0,-width/2); return g;
+}
+var TBG=tbGeo(7.8), TBE=tbGeo(1.5);
+function markerTex(text){
+  return function(c,w,h){ c.fillStyle='#f4f3ef'; c.fillRect(0,0,w,h); txt(c,text,w/2,h/2,text.length>1?3.6:4.6,{color:'#1b2329',weight:700,align:'center',rot:-Math.PI/2}); };
+}
+function tblock(mat,label,pe){
+  var g=new T.Group();
+  g.add(basis(new T.Mesh(TBG,mat),V(0,1,0),V(0,0,1),V(1,0,0)));
+  if(pe){ boxAt(g,M2.tbYellow,0,6.3,44,7.85,2.6,0.4); boxAt(g,M2.tbYellow,0,-6.3,44,7.85,2.6,0.4); }
+  [-1,1].forEach(function(s){
+    var h=cbox(5,5,0.6,M2.hole); h.position.set(0,s*12,41.2); h.rotation.x=-s*0.6435; g.add(h);
+    boxAt(g,M2.hole,0,s*25.15,12,5,0.4,6);
+  });
+  boxAt(g,M2.tie,0,0,45.2,6.4,9,2.4);
+  var m=frontPlane(6.2,8.8,24,markerTex(label)); m.position.set(0,0,46.42); g.add(m);
+  return g;
+}
+function endPlate(){ return basis(new T.Mesh(TBE,M2.tbGrey),V(0,1,0),V(0,0,1),V(1,0,0)); }
+function endStop(text){
+  var g=new T.Group(); boxAt(g,M2.devDark,0,0,16,9,42,32);
+  var sc=cylAxis(2.4,2.4,1,12,'z',M2.rail); sc.position.set(0,12,32.5); g.add(sc);
+  if(text){
+    var m=frontPlane(8,26,22,function(c,w,h){ c.fillStyle='#f4f3ef'; c.fillRect(0,0,w,h); txt(c,text,w/2,h/2,4.2,{color:'#1b2329',weight:700,align:'center',rot:-Math.PI/2}); });
+    m.position.set(0,-4,32.03); g.add(m);
+  }
+  return g;
+}
+function onRail(obj,u,vc){ obj.position.copy(P(u,vc,7.5)); return obj; }
+
+var q1=onRail(mcbDev(2,'Q1','C32'),88,430); scene.add(q1);
+part(q1,'dev','Q1 เบรกเกอร์เมน 2P','Main MCB 2P, rating shown is an example');
+var q2=onRail(mcbDev(2,'Q2','C6'),138,430); scene.add(q2);
+part(q2,'dev','Q2 เบรกเกอร์ไฟเลี้ยงบอร์ดมิเตอร์ 2P','MCB 2P C6 for the meter board supply');
+var stopsA=new T.Group(); scene.add(stopsA);
+stopsA.add(onRail(endStop(),64.5,430)); stopsA.add(onRail(endStop(),161.5,430));
+part(stopsA,'dev','ตัวกั้นปลายราง','DIN end stops',true);
+
+var x1=new T.Group(); scene.add(x1);
+x1.add(onRail(endStop('IN'),64.5,90));
+[['L',M2.tbGrey,0],['N',M2.tbBlue,0],['PE',M2.tbGreen,1]].forEach(function(t,i){ x1.add(onRail(tblock(t[1],t[0],t[2]),73.1+8.2*i,90)); });
+x1.add(onRail(endPlate(),94.3,90)); x1.add(onRail(endStop(),100,90));
+x1.add(onRail(endStop('OUT'),129.5,90));
+[['L',M2.tbGrey,0],['N',M2.tbBlue,0],['PE',M2.tbGreen,1]].forEach(function(t,i){ x1.add(onRail(tblock(t[1],t[0],t[2]),138.1+8.2*i,90)); });
+x1.add(onRail(endPlate(),159.3,90)); x1.add(onRail(endStop(),165,90));
+part(x1,'dev','X1 เทอร์มินัลไฟเข้าและไฟออก','Terminal blocks L, N, PE for supply in and load out',true);
+
+/* ---------- CT ---------- */
+function ctDev(){
+  var g=new T.Group();
+  var s=new T.Shape(); rrPath(s,-20,-23,40,46,7);
+  var h=new T.Path(); h.absarc(0,0,7.5,0,Math.PI*2,true); s.holes.push(h);
+  var geo=new T.ExtrudeGeometry(s,{depth:26,bevelEnabled:true,bevelThickness:1,bevelSize:1,bevelSegments:2,curveSegments:24});
+  g.add(basis(new T.Mesh(geo,M2.ctBody),V(1,0,0),V(0,0,1),V(0,-1,0)));
+  boxAt(g,M2.hole,0,-13,14,42.4,28.2,0.6);
+  boxAt(g,M2.ctBody,13,-13,24.6,9,12,3);
+  var sr=cylAxis(4,4.6,9,16,'x',M2.ctBody); sr.position.set(-25,-13,-5); g.add(sr);
+  var lab=frontPlane(28,20,20,function(c,w,hh){
+    c.fillStyle='#f4f3ef'; c.fillRect(0,0,w,hh);
+    txt(c,'CT1',2,4,3.6,{color:'#1b2329',weight:700});
+    txt(c,'K',w-6,3.6,2.6,{color:'#1b2329',weight:700,align:'center'});
+    txt(c,'L',w-6,hh-3.4,2.6,{color:'#1b2329',weight:700,align:'center'});
+    c.strokeStyle='#1b2329'; c.fillStyle='#1b2329'; c.lineWidth=0.7;
+    c.beginPath(); c.moveTo(w-6,6.4); c.lineTo(w-6,hh-7.6); c.stroke();
+    c.beginPath(); c.moveTo(w-8.2,hh-8.6); c.lineTo(w-3.8,hh-8.6); c.lineTo(w-6,hh-5.8); c.closePath(); c.fill();
+    txt(c,'P1',2,11,2.4,{color:'#5b6872',weight:600});
+    txt(c,'load',2,15.5,2.4,{color:'#5b6872',weight:600});
+  });
+  lab.position.set(-4,-13,24.05); g.add(lab);
+  return g;
+}
+var ct=ctDev(); ct.position.copy(P(230,268,26)); scene.add(ct);
+part(ct,'dev','CT1 หม้อแปลงกระแสแบบแยกแกน','Split-core CT clamped on the outgoing L');
+
+/* ---------- meter board ---------- */
+function buildMeterBoard(){
+  var b=makeBoard(50,80,1.2,H1C.concat(H1S),1.6,20,drawMain); var at=placer(b);
+  at(esp32(),23.8,61.0);
+  at(blockLabel(22.2,33.7,16,1.0,0.45,MAT.black,22,'#17181a',drawHLK),38.9,31.25);
+  at(blockLabel(17.6,9.4,14,0.5,0.3,MAT.blackMatte,26,'#141516',drawZMPT),18.4,37.3);
+  at(blockLabel(14.8,8.3,13,0.6,0.3,MAT.black,30,'#18191b',drawRN),20.0,18.75);
+  at(mrbox(12.2,5.8,11,0.7,0.45,MAT.yellow),23.5,11.15);
+  at(mrbox(12.2,5.8,11,0.7,0.45,MAT.yellow),37.1,11.15);
+  at(ycap(),10.6,8.9);
+  at(blockLabel(22.2,7.5,8.2,0.8,0.3,MAT.black,30,'#1a1b1d',drawFuse),16.5,27.65);
+  at(terminalBlock(2,5.08,7.2,9.8,MAT.blue),3.8,18.2);
+  at(mrbox(8.5,8.2,7.4,0.3,0.2,MAT.greenA),0.75,47.5);
+  at(terminalBlock(2,3.81,9.3,8.8,MAT.greenB),-8.15,47.5);
+  at(jstSide(12.4,7.6,6.0,4,2.5,-1,0),3.8,59.0);
+  at(icSmall(),16.0,45.6); at(sot223(),42.0,62.2); at(vchip(),42.8,53.8); at(sma(),35.7,53.0); at(tant(),38.0,66.6);
+  at(led0805('pw',0xff2a1a),34.6,60.6); at(led0805('st',0x00f040),34.6,63.0);
+  at(tact(),2.4,67.0); at(tact(),2.4,72.0);
+  [[1.4,33.6,1,'r'],[1.4,36.4,1,'r'],[1.4,39.2,1,'c'],[11.4,44.6,1,'r'],[11.4,47.4,1,'c'],[9.6,49.8,0,'r'],[13.2,49.8,0,'c'],
+   [19.6,44.2,0,'r'],[19.6,46.0,0,'r'],[19.6,47.8,0,'c'],[22.6,44.2,0,'c'],[22.6,46.0,0,'r'],[22.6,47.8,0,'r'],[25.4,45.2,1,'c'],[17.0,49.6,0,'c'],
+   [36.0,57.6,0,'r'],[46.6,58.4,1,'c'],[48.4,58.4,1,'c'],[47.8,64.8,1,'c'],[45.6,68.2,0,'r'],[41.6,68.6,0,'r'],[48.0,52.0,1,'r'],[48.0,55.4,1,'c']]
+   .forEach(function(p){ at(chip(p[3],p[2]),p[0],p[1]); });
+  H1S.forEach(function(h){ at(screw(1),h[0],h[1]); });
+  H1C.forEach(function(h){ at(screw(0.55),h[0],h[1]); at(new T.Mesh(new T.CylinderGeometry(2.9,2.9,10,6),MAT.tin),h[0],h[1],-5); });
+  var ant=antenna(b); ant.name='ufl-antenna'; b.grp.add(ant);
+  return shadowAll(b.grp);
+}
+var meter=new T.Group(); meter.add(buildMeterBoard());
+basis(meter,V(1,0,0),V(0,0,1),V(0,-1,0)); meter.position.copy(P(120,255,10)); scene.add(meter);
+part(meter,'dev','A1 บอร์ดมิเตอร์ ESP32','ESP32 meter board on 10 mm standoffs');
+var meterAnt=meter.getObjectByName('ufl-antenna');
+part(meterAnt,'dev','สายอากาศ 2.4 GHz และสาย U.FL','Antenna on U.FL cable from the ESP32-WROOM-32UE, inside the cabinet');
+meter.updateMatrixWorld(true);
+for(var ai=0;ai<=24;ai++){ var ak=ai/24, aq=meterAnt.localToWorld(V(-31-4.7*ak,1.4-0.95*ak,-43.2-42*ak)); WIRE_PTS.push([aq.x,aq.y,aq.z,1.4]); }
+var a1lab=frontPlane(36,11,16,function(c,w,h){ c.fillStyle='#f4f3ef'; c.fillRect(0,0,w,h); c.strokeStyle='#9aa3a9'; c.lineWidth=0.3; c.strokeRect(0.3,0.3,w-0.6,h-0.6); txt(c,'A1',2.2,h/2,4.4,{color:'#1b2329',weight:700}); txt(c,'ESP32 METER',11.5,h/2,2.6,{color:'#3a434a',weight:600}); });
+a1lab.position.copy(P(170,291,0.15)); scene.add(a1lab);
+
+/* ---------- glands ---------- */
+var glandG=new T.Group(); scene.add(glandG);
+[[-89,'G1'],[-24,'G2']].forEach(function(gx){
+  var nut=cylAxis(16,16,6,6,'y',M2.gland); nut.position.set(gx[0],ET+3,60); glandG.add(nut);
+  var bd=cylAxis(14.5,14.5,8,6,'y',M2.gland); bd.position.set(gx[0],-4,60); glandG.add(bd);
+  var dome=cylAxis(9.5,12.5,12,24,'y',M2.gland); dome.position.set(gx[0],-14,60); glandG.add(dome);
+});
+part(glandG,'dev','เคเบิลแกลนด์ M25 ด้านล่างตู้','Cable glands, bottom entry',true);
+
+/* ---------- panel wiring ---------- */
+var wIn=new T.Group(), wOut=new T.Group(), wSup=new T.Group(), wCt=new T.Group(), wHar=new T.Group(), clipG=new T.Group();
+[wIn,wOut,wSup,wCt,wHar,clipG].forEach(function(g){ scene.add(g); });
+var RP=1.9, RS=1.4;
+pw(wIn,[[73.1,115,19.5],[73.1,140,19],[73.1,150,16],[21,150,16],[21,506,16],[79,506,16],[79,490,24],[79,472.5,29.5]],RP,M2.brown);
+pw(wIn,[[81.3,115,19.5],[81.3,140,19],[81.3,152,22],[25,152,22],[25,509,22],[97,509,22],[97,490,24],[97,472.5,29.5]],RP,M2.blueW);
+[[81,'IN',[73.1,81.3,89.5],wIn],[146,'OUT',[138.1,146.3,154.5],wOut]].forEach(function(gc){
+  var u=gc[0], grp=gc[3];
+  pw(grp,[[u,-95,40],[u,-22,40],[u,5,36],[u,25,24],[u,38,20]],5.5,M2.jacket,10);
+  var tape=cylAxis(5.9,5.9,5,20,'y',M2.black); tape.position.copy(P(u,37,20)); grp.add(tape);
+  var cols=[M2.brown,M2.blueW,M2.gy];
+  gc[2].forEach(function(tu,i){ pw(grp,[[u+(i-1)*2.6,40,20],[tu,52,19.8],[tu,65,19.5]],RP,cols[i],6); });
+});
+pw(wOut,[[89.5,115,19.5],[89.5,140,19],[89.5,160,12],[154.5,160,12],[154.5,140,19],[154.5,115,19.5]],RP,M2.gy);
+pw(wOut,[[77.5,387.5,29.5],[77.5,372,24],[77.5,358,14],[230,358,14],[230,345,24],[230,338,26],[230,172,26],[230,158,28],[138.1,158,28],[138.1,140,19],[138.1,115,19.5]],RP,M2.brown);
+pw(wOut,[[95.5,387.5,29.5],[95.5,372,24],[95.5,352,20],[29,352,20],[29,162,20],[146.3,162,20],[146.3,140,19],[146.3,115,19.5]],RP,M2.blueW);
+pw(wSup,[[80.5,387.5,29.5],[80.5,372,30],[80.5,362,30],[17,362,30],[17,503,30],[129,503,30],[129,490,26],[129,472.5,29.5]],RS,M2.brown);
+pw(wSup,[[98.5,387.5,29.5],[98.5,372,32],[98.5,365,32],[33,365,32],[33,512,32],[147,512,32],[147,490,26],[147,472.5,29.5]],RS,M2.blueW);
+pw(wSup,[[129,387.5,29.5],[129,372,26],[129,350,11],[23,350,11],[23,274.25,12],[40,274.25,14],[60,274.25,15],[94.9,274.25,15]],RS,M2.brown);
+pw(wSup,[[147,387.5,29.5],[147,372,26],[147,345,13],[27,345,13],[27,279.35,13],[40,279.35,14],[60,279.35,15],[94.9,279.35,15]],RS,M2.blueW);
+pw(wCt,[[201,255,21],[194,255,21],[190,245,18],[190,176,18],[190,164,30],[31,164,30],[31,247.5,26],[40,247.5,20],[60,247.5,16],[75,247.5,15]],2.2,M2.black);
+pw(wCt,[[75,247.5,15.2],[79,249.4,15],[82.2,249.4,14.9]],0.8,M2.red,2);
+pw(wCt,[[75,247.5,14.8],[79,245.6,15],[82.2,245.6,14.9]],0.8,M2.black,2);
+pw(wHar,[[89,236,14.6],[70,236,15],[50,236,16],[40,236,18],[19,236,24],[19,147,24],[311,147,24],[311,122,24],[330,122,22],[348,122,26],[362,122,45],[362,122,128],[363,120,152]],2.5,M2.yellowW,8);
+var jplug=cbox(6,11,5,M2.tie); jplug.position.copy(P(92,236,14.6)); wHar.add(jplug);
+(function(){
+  var keep=fingers.filter(function(f){
+    var c=P(f[0],f[1],f[2]), hx=f[3]/2, hy=f[4]/2, hz=f[5]/2;
+    for(var i=0;i<WIRE_PTS.length;i++){ var q=WIRE_PTS[i], e=q[3]+0.6;
+      if(Math.abs(q[0]-c.x)<hx+e&&Math.abs(q[1]-c.y)<hy+e&&Math.abs(q[2]-c.z)<hz+e) return false; }
+    return true;
+  });
+  ductG.add(shadowAll(mergeBoxes(keep.map(function(f){ var c=P(f[0],f[1],f[2]); return [c.x,c.y,c.z,f[3],f[4],f[5]]; }),M2.duct)));
+})();
+part(wIn,'wire','สายไฟเข้า L, N จากแกลนด์ไปเบรกเกอร์ Q1','Supply cable and cores to X1 and Q1',true);
+part(wOut,'wire','สายไฟออกโหลด (สาย L ลอดผ่าน CT1)','Load side L, N, PE; L passes through CT1',true);
+part(wSup,'wire','สายเลี้ยงบอร์ดมิเตอร์ ผ่าน Q2','Meter supply via Q2 to the board AC terminal',true);
+part(wCt,'wire','สายสัญญาณ CT1 ไปบอร์ด','CT lead to the board CT terminal',true);
+part(wHar,'wire','สายเซนเซอร์ DS18B20 ช่วงในตู้','Sensor harness from board to the hinge',true);
+
+function tieMount(par,pos,axis){
+  var b=cbox(axis==='x'?3.5:18,18,axis==='x'?18:3.5,M2.tie); b.position.copy(pos); par.add(b); return b;
+}
+[64,104].forEach(function(w){ tieMount(clipG,P(366.6,122,w),'x'); });
+[[362,122,64],[362,122,104]].forEach(function(p){ var r=new T.Mesh(new T.TorusGeometry(3.3,0.65,6,16),M2.black); r.position.copy(P(p[0],p[1],p[2])); clipG.add(r); });
+var clipA=cbox(10,14,12,M2.clip); clipA.position.set(EW/2-ET-5,150,172); clipG.add(clipA);
+part(clipG,'wire','ตัวยึดสายและแคลมป์','Adhesive tie mounts and P-clips',true);
+
+/* ---------- door ---------- */
+var doorPivot=new T.Group(); doorPivot.position.set(EW/2,0,ED+21); scene.add(doorPivot);
+var doorG=new T.Group(); doorPivot.add(doorG);
+var doorShell=new T.Group(); doorG.add(doorShell);
+boxAt(doorShell,M2.enc,-EW/2,EH/2,-0.75,EW,EH,1.5);
+boxAt(doorShell,M2.enc,-EW+0.75,EH/2,-10.75,1.5,EH,18.5);
+boxAt(doorShell,M2.enc,-0.75,EH/2,-10.75,1.5,EH,18.5);
+boxAt(doorShell,M2.enc,-EW/2,EH-0.75,-10.75,EW-3,1.5,18.5);
+boxAt(doorShell,M2.enc,-EW/2,0.75,-10.75,EW-3,1.5,18.5);
+boxAt(doorShell,M2.gasket,-10,EH/2,-4.5,8,EH-20,6);
+boxAt(doorShell,M2.gasket,-EW+10,EH/2,-4.5,8,EH-20,6);
+boxAt(doorShell,M2.gasket,-EW/2,EH-10,-4.5,EW-28,8,6);
+boxAt(doorShell,M2.gasket,-EW/2,10,-4.5,EW-28,8,6);
+var lk=cylAxis(11,11,8,24,'z',M2.black); lk.position.set(-EW+22,300,4); doorShell.add(lk);
+var lk2=cylAxis(8,8,14,20,'z',M2.black); lk2.position.set(-EW+22,300,-8); doorShell.add(lk2);
+boxAt(doorShell,M2.rail,-EW+22,300,-16,10,30,3);
+var dStud=cylAxis(3,3,8,12,'z',M2.brass); dStud.position.set(-18,520,-5.5); doorShell.add(dStud);
+[110,490].forEach(function(y){ boxAt(doorShell,M2.enc,-1.5,y,4,3,40,8); });
+part(doorShell,'cab','บานประตูตู้','Door with gasket and quarter-turn lock');
+
+var sensorTpl=(function(){
+  var b=makeBoard(28,13,0.8,[[14.6,9.6]],1.6,36,drawSensor); var at=placer(b);
+  at(to92(),14.2,0,0);
+  at(jstSide(13.0,8.2,6.0,4,2.5,-1,3.6),1.9,6.5);
+  at(jstSide(13.0,8.2,6.0,4,2.5,1,3.6),26.1,6.5);
+  at(screw(0.85),14.6,9.6);
+  at(new T.Mesh(new T.CylinderGeometry(2.9,2.9,8,6),MAT.tin),14.6,9.6,-4);
+  return shadowAll(b.grp);
+})();
+function DP(u,v,z){ return V(-u,v,z); }
+var SENS={1:[80,480],2:[200,480],3:[320,480],6:[80,330],5:[200,330],4:[320,330],7:[80,180],8:[200,180],9:[320,180]};
+var ZB=-9.5, ZC=-14.1;
+function badgeDraw(n){ return function(c,w,h){ c.fillStyle='#1d2329'; c.fillRect(0,0,w,h); txt(c,String(n),w/2,h/2+0.3,9,{color:'#ffffff',weight:700,align:'center'}); }; }
+Object.keys(SENS).sort().forEach(function(k){
+  var u=SENS[k][0], v=SENS[k][1];
+  var g=new T.Group(); g.add(sensorTpl.clone());
+  basis(g,V(-1,0,0),V(0,0,-1),V(0,-1,0)); g.position.copy(DP(u,v,ZB));
+  var bd=frontPlane(12,12,20,badgeDraw(k)); bd.rotation.y=Math.PI; bd.position.copy(DP(u-26,v+20,-1.55));
+  var holder=new T.Group(); holder.add(g); holder.add(bd); doorG.add(holder);
+  part(holder,'door','เซนเซอร์ DS18B20 ตำแหน่ง '+k,'DS18B20 sensor board, position '+k);
+});
+
+var dCab=new T.Group(); doorG.add(dCab);
+function dw(list,r,mat,rad){ return wire(dCab,list.map(function(a){ return DP(a[0],a[1],a[2]); }),r,mat,rad); }
+function plug(u,v){ var p=cbox(6,11,5,M2.tie); p.position.copy(DP(u,v,ZC)); dCab.add(p); }
+function rowCable(ua,ub,v){
+  var a=ua+22.2,b=ub-22.2,m=(a+b)/2;
+  dw([[a,v,ZC],[a+10,v,-13.6],[m,v-5,-11],[b-10,v,-13.6],[b,v,ZC]],2.5,M2.yellowW,6);
+  plug(ua+19.2,v); plug(ub-19.2,v);
+}
+function rowCableRL(ua,ub,v){
+  var a=ua-22.2,b=ub+22.2,m=(a+b)/2;
+  dw([[a,v,ZC],[a-10,v,-13.6],[m,v-5,-11],[b+10,v,-13.6],[b,v,ZC]],2.5,M2.yellowW,6);
+  plug(ua-19.2,v); plug(ub+19.2,v);
+}
+rowCable(80,200,180); rowCable(200,320,180);
+rowCableRL(320,200,330); rowCableRL(200,80,330);
+rowCable(80,200,480); rowCable(200,320,480);
+dw([[342.2,180,ZC],[352,180,-12],[362,192,-5],[362,318,-5],[352,330,-12],[342.2,330,ZC]],2.5,M2.yellowW,9);
+plug(339.2,180); plug(339.2,330);
+dw([[57.8,330,ZC],[48,330,-12],[38,342,-5],[38,468,-5],[48,480,-12],[57.8,480,ZC]],2.5,M2.yellowW,9);
+plug(60.8,330); plug(60.8,480);
+dw([[22,150,-7],[30,160,-8],[40,171,-11],[50,180,-13.6],[57.8,180,ZC]],2.5,M2.yellowW,6);
+plug(60.8,180);
+[[362,225],[362,285],[38,375],[38,435]].forEach(function(p){
+  var b=cbox(18,18,3.5,M2.tie); b.position.copy(DP(p[0],p[1],-3.3)); dCab.add(b);
+  var r=new T.Mesh(new T.TorusGeometry(3.3,0.65,6,16),M2.black); r.rotation.x=Math.PI/2; r.position.copy(DP(p[0],p[1],-5)); dCab.add(r);
+});
+var clipB=cbox(14,12,10,M2.clip); clipB.position.copy(DP(22,150,-6.5)); dCab.add(clipB);
+part(dCab,'door','สายเซนเซอร์บนประตู ต่อพ่วง 7 ถึง 3','Daisy-chained sensor cable on the door: 7, 8, 9, 4, 5, 6, 1, 2, 3',true);
+
+/* ---------- flexible parts across the hinge ---------- */
+var loopG=new T.Group(), strapG=new T.Group(); scene.add(loopG); scene.add(strapG);
+part(loopG,'wire','สายข้ามบานพับ หุ้มไส้ไก่','Hinge loop with spiral wrap');
+part(strapG,'wire','สายดินประตู','Door earth bonding strap');
+function clearG(g){ while(g.children.length){ var c=g.children.pop(); c.geometry.dispose(); } }
+function rebuildFlex(){
+  clearG(loopG); clearG(strapG);
+  doorPivot.updateMatrixWorld(true);
+  var n=V(0,0,-1).applyQuaternion(doorPivot.quaternion);
+  var A=P(363,120,152), B=doorG.localToWorld(DP(22,150,-7));
+  var mid=A.clone().add(B).multiplyScalar(0.5).add(V(10,-58,12));
+  var curve=new T.CatmullRomCurve3([A,A.clone().add(V(-1,-6,16)),mid,B.clone().addScaledVector(n,16).add(V(0,-6,0)),B],false,'centripetal');
+  loopG.add(new T.Mesh(new T.TubeGeometry(curve,120,2.5,8,false),M2.yellowW));
+  var fr=curve.computeFrenetFrames(400,false), hp=[], turns=curve.getLength()/8;
+  for(var i=10;i<=390;i++){
+    var t=i/400, p=curve.getPointAt(t), a=t*turns*Math.PI*2;
+    hp.push(p.clone().addScaledVector(fr.normals[i],3.3*Math.cos(a)).addScaledVector(fr.binormals[i],3.3*Math.sin(a)));
+  }
+  loopG.add(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(hp),hp.length*2,0.7,5,false),M2.wrap));
+  var S1=V(EW/2-ET-10,520,186), S2=doorG.localToWorld(DP(18,520,-9.5));
+  var sm=S1.clone().add(S2).multiplyScalar(0.5).add(V(8,-28,8));
+  strapG.add(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3([S1,S1.clone().add(V(-1,-4,8)),sm,S2.clone().addScaledVector(n,8),S2],false,'centripetal'),60,2.0,8,false),M2.gy));
+  shadowAll(loopG); shadowAll(strapG);
+  if(selected) selBox.setFromObject(selected);
+}
+
+/* ---------- highlight, list, selection ---------- */
+var selected=null;
+var selBox=new T.BoxHelper(undefined,0xffffff), hovBox=new T.BoxHelper(undefined,0xffffff);
+[selBox,hovBox].forEach(function(b){ b.material.depthTest=false; b.material.transparent=true; b.renderOrder=10; b.visible=false; scene.add(b); });
+function colorBoxes(){ selBox.material.color.copy(cssColor('--accent','#0a7fa3')); hovBox.material.color.copy(cssColor('--hover','#7d8b95')); hovBox.material.opacity=0.8; }
+colorBoxes();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',colorBoxes);
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function isVisible(o){ while(o){ if(!o.visible) return false; o=o.parent; } return true; }
+function select(o){
+  selected=o;
+  if(!o){ selBox.visible=false; return; }
+  scene.updateMatrixWorld(true); selBox.setFromObject(o); selBox.visible=true;
+}
+
+var ray=new T.Raycaster(), ndc=new T.Vector2(), dragging=false, down=null;
+function pick(cx,cy){
+  var r=renderer.domElement.getBoundingClientRect();
+  ndc.set(((cx-r.left)/r.width)*2-1,-((cy-r.top)/r.height)*2+1);
+  ray.setFromCamera(ndc,camera);
+  var hits=ray.intersectObjects(PICK.filter(isVisible),true);
+  for(var k=0;k<hits.length;k++){ if(!isVisible(hits[k].object)) continue; var o=hits[k].object; while(o&&!o.userData.info) o=o.parent; if(o) return o; }
+  return null;
+}
+function hideTip(){ tip.classList.remove('on'); hovBox.visible=false; }
+function showTip(o,cx,cy){
+  var r=stage.getBoundingClientRect(), i=o.userData.info;
+  tip.innerHTML='<b>'+esc(i.th)+'</b><span>'+esc(i.en)+'</span>';
+  var x=cx-r.left+14, y=cy-r.top+14, w2=tip.offsetWidth, h2=tip.offsetHeight;
+  if(x+w2>r.width-8) x=cx-r.left-w2-14;
+  if(y+h2>r.height-8) y=cy-r.top-h2-14;
+  tip.style.transform='translate('+Math.max(6,x)+'px,'+Math.max(6,y)+'px)';
+  tip.classList.add('on'); hovBox.setFromObject(o); hovBox.visible=true;
+}
+var cvs=renderer.domElement;
+cvs.addEventListener('pointermove',function(e){
+  if(e.pointerType==='touch'||dragging||e.buttons) return;
+  var o=pick(e.clientX,e.clientY);
+  if(o){ showTip(o,e.clientX,e.clientY); cvs.style.cursor='pointer'; } else { hideTip(); cvs.style.cursor=''; }
+});
+cvs.addEventListener('pointerleave',function(){ hideTip(); cvs.style.cursor=''; });
+cvs.addEventListener('pointerdown',function(e){ down={x:e.clientX,y:e.clientY}; });
+cvs.addEventListener('pointerup',function(e){
+  if(!down) return; var moved=Math.hypot(e.clientX-down.x,e.clientY-down.y); down=null;
+  if(moved<6){ var o=pick(e.clientX,e.clientY); select(o); if(o&&e.pointerType==='touch') showTip(o,e.clientX,e.clientY); }
+});
+
+/* ---------- callout labels ---------- */
+meter.updateMatrixWorld(true);
+function BL(cx,cz,h){ return meter.localToWorld(V(cx-25,h,cz-40)); }
+function DW(u,v,z){ return function(){ return doorG.localToWorld(DP(u,v,z)); }; }
+function K(v){ return function(){ return v; }; }
+var LABELS={
+  over:[
+    [K(P(88,412,72)),'Q1 เบรกเกอร์เมน','L'],
+    [K(P(138,468,72)),'Q2 เบรกเกอร์ไฟเลี้ยงบอร์ด','L'],
+    [K(P(200,430,8)),'ราง DIN 35 mm','L'],
+    [K(BL(25,40,6)),'A1 บอร์ดมิเตอร์ ESP32','L'],
+    [K(P(230,268,52)),'CT1 หม้อแปลงกระแส','L'],
+    [K(P(240,355,42)),'รางเดินสาย','L'],
+    [K(P(110,90,50)),'X1 เทอร์มินัลไฟเข้า / ไฟออก','L'],
+    [K(V(-89,-14,60)),'เคเบิลแกลนด์','L'],
+    [DW(320,480,-12),'เซนเซอร์ DS18B20 9 จุด','R'],
+    [DW(362,255,-5),'สายต่อพ่วง (Daisy-chain)','R']
+  ],
+  board:[
+    [K(BL(30.3,11.15,11)),'ตัวเก็บประจุกรองสัญญาณรบกวน'],
+    [K(BL(3.8,18.2,11.4)),'ขั้วไฟเข้า N / L','','220 VAC'],
+    [K(BL(20,18.75,14.6)),'โช้กกรองสัญญาณรบกวน','','Schaffner RN202'],
+    [K(BL(16.5,27.65,9.8)),'ฟิวส์ 5 × 20 mm'],
+    [K(BL(18.4,37.3,15.6)),'หม้อแปลงวัดแรงดัน','','ZMPT107-1'],
+    [K(BL(38.9,31.25,17.6)),'แหล่งจ่ายไฟ 5 V','','HLK-3M05C'],
+    [K(BL(16.0,45.6,2.6)),'ไอซีวัดพลังงาน','','BL0942 (UART)'],
+    [K(BL(-6,47.5,10)),'ขั้วต่อ CT','L','CT+ / CT−'],
+    [K(BL(3.8,59.0,7.6)),'ขั้วต่อเซนเซอร์ DS18B20','L','SH, −, SIG, +'],
+    [K(BL(12.9,63.4,2.0)),'ขาอัปโหลดโปรแกรม','','UPLOAD'],
+    [K(BL(2.4,69.5,2.9)),'ปุ่ม BOOT / RST'],
+    [K(BL(23.8,59,6.0)),'โมดูล ESP32-WROOM-32UE'],
+    [K(BL(18.0,68.5,5.0)),'ขั้ว U.FL และสายอากาศ'],
+    [K(BL(34.6,60.6,2.2)),'LED แดง PW','','ไฟเลี้ยง'],
+    [K(BL(34.6,63.0,2.2)),'LED เขียว LED2','','GPIO2'],
+    [K(BL(42.0,62.2,3.2)),'ไอซีควบคุมแรงดัน 3.3 V']
+  ],
+  led:[
+    [K(BL(34.6,60.6,2.2)),'LED แดง PW','L','ติดเมื่อบอร์ดได้รับไฟเลี้ยง'],
+    [K(BL(34.6,63.0,2.2)),'LED เขียว LED2','R','GPIO2 ควบคุมโดยเฟิร์มแวร์']
+  ],
+  door:[
+    [DW(80,180,-12),'จุดที่ 7 ตัวแรกของสาย','L'],
+    [DW(320,480,-12),'จุดที่ 3 ปลายสาย','R'],
+    [DW(362,225,-4),'ฐานยึดสายและเคเบิลไทร์','R'],
+    [DW(22,150,-7),'สายจากบอร์ดผ่านบานพับ','L'],
+    [DW(320,330,-12),'บอร์ดเซนเซอร์ DS18B20','R']
+  ],
+  hinge:[
+    [function(){ var b=new T.Box3().setFromObject(loopG); return b.getCenter(V(0,0,0)); },'สายเซนเซอร์หุ้มไส้ไก่','R'],
+    [K(P(366.6,122,84)),'ฐานยึดสายและเคเบิลไทร์','L'],
+    [DW(22,150,-7),'แคลมป์ยึดสายบนประตู','R']
+  ]
+};
+var coSvg=document.getElementById('co-svg'), coLab=document.getElementById('co-lab'), coKey=null, coDivs=[], showLabels=true;
+function buildLabels(key){
+  coKey=key; coLab.innerHTML=''; coDivs=[];
+  (LABELS[key]||[]).forEach(function(L){
+    var d=document.createElement('div');
+    d.innerHTML=esc(L[1])+(L[3]?'<small>'+esc(L[3])+'</small>':'');
+    coLab.appendChild(d); coDivs.push(d);
+  });
+}
+function layoutLabels(){
+  var set=LABELS[coKey]||[], on=showLabels&&set.length>0;
+  coSvg.style.display=coLab.style.display=on?'':'none';
+  if(!on){ coSvg.innerHTML=''; return; }
+  var W=stage.clientWidth, H=stage.clientHeight, pts=[], minX=W, maxX=0, i;
+  set.forEach(function(L,k){
+    var v=L[0]().clone().project(camera), x=(v.x+1)/2*W, y=(1-v.y)/2*H;
+    pts.push({k:k,x:x,y:y,side:L[2],w:coDivs[k].offsetWidth,h:coDivs[k].offsetHeight});
+    minX=Math.min(minX,x); maxX=Math.max(maxX,x);
+  });
+  var mid=(minX+maxX)/2, gap=W*0.035;
+  pts.forEach(function(p){ if(!p.side) p.side=p.x<mid?'L':'R'; });
+  var out='';
+  ['L','R'].forEach(function(s){
+    var col=pts.filter(function(p){ return p.side===s; }).sort(function(a,b){ return a.y-b.y; });
+    if(!col.length) return;
+    var ex=s==='L'?Math.max(12+Math.max.apply(null,col.map(function(p){ return p.w; })),Math.min.apply(null,col.map(function(p){ return p.x; }))-gap)
+                  :Math.min(W-12-Math.max.apply(null,col.map(function(p){ return p.w; })),Math.max.apply(null,col.map(function(p){ return p.x; }))+gap);
+    var kx0=s==='L'?ex+10:ex-10;
+    function stack(){
+      var y=8;
+      col.forEach(function(p){ p.ly=Math.max(p.y,y+p.h/2); y=p.ly+p.h/2+6; });
+      if(y-6>H-8){ for(i=col.length-1;i>=0;i--){ var lim=i===col.length-1?H-8-col[i].h/2:col[i+1].ly-col[i+1].h/2-6-col[i].h/2; col[i].ly=Math.min(col[i].ly,lim); } }
+    }
+    function cross(a,b){
+      function o(p,q,r){ return Math.sign((q.x-p.x)*(r.y-p.y)-(q.y-p.y)*(r.x-p.x)); }
+      var p1={x:kx0,y:a.ly},p2={x:a.x,y:a.y},p3={x:kx0,y:b.ly},p4={x:b.x,y:b.y};
+      return o(p1,p2,p3)!==o(p1,p2,p4)&&o(p3,p4,p1)!==o(p3,p4,p2);
+    }
+    stack();
+    for(var it=0;it<12;it++){
+      var sw=false;
+      for(i=0;i<col.length-1;i++){ if(cross(col[i],col[i+1])){ var tmp=col[i]; col[i]=col[i+1]; col[i+1]=tmp; sw=true; stack(); } }
+      if(!sw) break;
+    }
+    col.forEach(function(p){
+      var bx=s==='L'?ex-p.w:ex, kx=s==='L'?ex+10:ex-10;
+      coDivs[p.k].style.transform='translate('+bx.toFixed(1)+'px,'+(p.ly-p.h/2).toFixed(1)+'px)';
+      out+='<polyline points="'+ex.toFixed(1)+','+p.ly.toFixed(1)+' '+kx.toFixed(1)+','+p.ly.toFixed(1)+' '+p.x.toFixed(1)+','+p.y.toFixed(1)+'"/>'+
+           '<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="3.6"/>';
+    });
+  });
+  coSvg.innerHTML=out;
+}
+
+/* ---------- status LED mode and timing strip ---------- */
+var ledMode='fast', ledForce=null;
+var LED_NAME={fast:'กะพริบเร็ว 5 ครั้ง/วินาที (ติด 100, ดับ 100 ms)',slow:'กะพริบช้า 1 ครั้ง/วินาที (ติด 500, ดับ 500 ms)',solid:'ติดค้าง: เชื่อมต่อ Wi-Fi สำเร็จ',err:'กะพริบคู่ (80, 80, 80, 700 ms): อ่าน BL0942 ไม่ได้'};
+var ledBox=document.getElementById('ledbox'), ledWave=document.getElementById('led-wave'), ledNameEl=document.getElementById('led-name');
+var WV={x0:6,x1:294,yH:8,yL:30,ms:2000};
+function drawWave(){
+  ledNameEl.textContent='LED เขียว: '+LED_NAME[ledMode];
+  var d='', prev=null, s='';
+  for(var t=0;t<=WV.ms;t+=5){
+    var on=ledAt(ledMode,t), x=WV.x0+(WV.x1-WV.x0)*t/WV.ms, y=on?WV.yH:WV.yL;
+    if(prev===null) d='M'+x.toFixed(1)+' '+y; else if(on!==prev) d+=' L'+x.toFixed(1)+' '+(prev?WV.yH:WV.yL)+' L'+x.toFixed(1)+' '+y;
+    prev=on;
+  }
+  d+=' L'+WV.x1+' '+(prev?WV.yH:WV.yL);
+  for(var k=0;k<=4;k++){ var xx=WV.x0+(WV.x1-WV.x0)*k/4; s+='<line class="ax" x1="'+xx+'" y1="'+(WV.yL+2)+'" x2="'+xx+'" y2="'+(WV.yL+5)+'"/><text x="'+xx+'" y="44" text-anchor="middle">'+(k*0.5)+' s</text>'; }
+  ledWave.innerHTML='<line class="ax" x1="'+WV.x0+'" y1="'+(WV.yL+2)+'" x2="'+WV.x1+'" y2="'+(WV.yL+2)+'"/>'+s+'<path class="wv" d="'+d+'"/><line class="ph" id="ph" x1="0" y1="2" x2="0" y2="'+(WV.yL+2)+'"/>';
+}
+function setLedMode(m){
+  ledMode=m; drawWave();
+  Array.prototype.forEach.call(document.querySelectorAll('[data-led]'),function(x){ x.setAttribute('aria-pressed',String(x.dataset.led===m)); });
+}
+Array.prototype.forEach.call(document.querySelectorAll('[data-led]'),function(b){ b.addEventListener('click',function(){ setLedMode(b.dataset.led); }); });
+drawWave();
+var ledT0=performance.now();
+function tickLeds(now){
+  var t=(now-ledT0)%WV.ms;
+  setLed('pw',true);
+  setLed('st',ledForce===null?ledAt(ledMode,t):ledForce);
+  var ph=document.getElementById('ph');
+  if(ph&&!ledBox.hidden){ var x=WV.x0+(WV.x1-WV.x0)*t/WV.ms; ph.setAttribute('x1',x); ph.setAttribute('x2',x); }
+}
+
+/* ---------- camera, door, toolbar ---------- */
+var tw=null, view='over';
+var reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+controls.addEventListener('start',function(){ dragging=true; tw=null; hideTip(); });
+controls.addEventListener('end',function(){ dragging=false; });
+function presets(){
+  doorPivot.updateMatrixWorld(true);
+  var dc=doorG.localToWorld(DP(200,330,-10)), n=V(0,0,-1).applyQuaternion(doorPivot.quaternion);
+  var bc=BL(25,40,6), lc=BL(34.6,61.8,1);
+  return {
+    over:{t:V(70,300,170),p:V(-780,760,1380)},
+    panel:{t:V(0,300,40),p:V(-40,320,1320)},
+    door:{t:dc,p:dc.clone().addScaledVector(n,1100).add(V(0,70,0))},
+    hinge:{t:V(192,165,205),p:V(-90,360,640)},
+    board:{t:bc,p:bc.clone().add(V(-70,55,330))},
+    led:{t:lc,p:lc.clone().add(V(-22,18,95))}
+  };
+}
+function goTo(t,p,instant){
+  if(instant||reduceMotion){ controls.target.copy(t); camera.position.copy(p); controls.update(); tw=null; return; }
+  tw={t0:performance.now(),dur:700,fp:camera.position.clone(),tp:p.clone(),ft:controls.target.clone(),tt:t.clone()};
+}
+function applyView(instant){
+  var pr=presets()[view]; goTo(pr.t,pr.p,instant);
+  buildLabels(view); ledBox.hidden=!(view==='board'||view==='led');
+}
+Array.prototype.forEach.call(document.querySelectorAll('[data-view]'),function(b){
+  b.addEventListener('click',function(){
+    view=b.dataset.view;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-view]'),function(x){ x.setAttribute('aria-pressed',String(x===b)); });
+    applyView(false);
+  });
+});
+var doorIn=document.getElementById('door'), doorOut=document.getElementById('door-out'), flexPending=false;
+function setDoor(deg){
+  doorPivot.rotation.y=deg*Math.PI/180; doorOut.textContent=deg+'°';
+  if(!flexPending){ flexPending=true; requestAnimationFrame(function(){ flexPending=false; rebuildFlex(); }); }
+}
+doorIn.addEventListener('input',function(){ setDoor(+doorIn.value); });
+var tCover=document.getElementById('t-cover'), tRot=document.getElementById('t-rot');
+tCover.addEventListener('click',function(){ coverG.visible=!coverG.visible; tCover.setAttribute('aria-pressed',String(coverG.visible)); if(selected===ductG) selBox.setFromObject(ductG); });
+tRot.addEventListener('click',function(){ controls.autoRotate=!controls.autoRotate; tRot.setAttribute('aria-pressed',String(controls.autoRotate)); });
+var tLab=document.getElementById('t-lab');
+tLab.addEventListener('click',function(){ showLabels=!showLabels; tLab.setAttribute('aria-pressed',String(showLabels)); });
+
+/* ---------- save PNG for the report ---------- */
+var capBg='white', capScale=3, capNo={1:1,2:1,3:1,4:1,5:1};
+var capCh=document.getElementById('cap-ch'), capIn=document.getElementById('cap-no'), capGo=document.getElementById('cap-go');
+var capPx=document.getElementById('cap-px'), capMsg=document.getElementById('cap-msg');
+var CAP_MAX=(function(){
+  var gl=renderer.getContext(), vp=gl.getParameter(gl.MAX_VIEWPORT_DIMS);
+  return Math.min(vp[0],vp[1],gl.getParameter(gl.MAX_RENDERBUFFER_SIZE),8192);
+})();
+function capSize(){
+  var sz=renderer.getSize(new T.Vector2()), s=Math.min(capScale,CAP_MAX/Math.max(sz.x,sz.y,1));
+  return {s:s,w:Math.floor(sz.x*s),h:Math.floor(sz.y*s)};
+}
+function showPx(){ var c=capSize(); capPx.textContent=c.w+' × '+c.h+' px'; }
+function segPick(attr,fn){
+  var bs=document.querySelectorAll('['+attr+']');
+  Array.prototype.forEach.call(bs,function(b){
+    b.addEventListener('click',function(){
+      Array.prototype.forEach.call(bs,function(x){ x.setAttribute('aria-pressed',String(x===b)); });
+      fn(b.getAttribute(attr));
+    });
+  });
+}
+segPick('data-bg',function(v){ capBg=v; });
+segPick('data-scale',function(v){ capScale=+v; showPx(); });
+function capNum(){ return Math.max(1,parseInt(capIn.value,10)||1); }
+capCh.addEventListener('change',function(){ capIn.value=capNo[capCh.value]; });
+capIn.addEventListener('change',function(){ capNo[capCh.value]=capNum(); capIn.value=capNo[capCh.value]; });
+function renderPNG(){
+  var c=capSize(), pr=renderer.getPixelRatio(), cc=renderer.getClearColor(new T.Color()), ca=renderer.getClearAlpha();
+  var sv=selBox.visible, url=null;
+  hideTip(); selBox.visible=false;
+  try{
+    if(capBg==='white') renderer.setClearColor(0xffffff,1); else renderer.setClearColor(0x000000,0);
+    renderer.setPixelRatio(c.s);
+    renderer.render(scene,camera);
+    url=renderer.domElement.toDataURL('image/png');
+  }catch(e){ url=null; }
+  renderer.setPixelRatio(pr); renderer.setClearColor(cc,ca); selBox.visible=sv;
+  renderer.render(scene,camera);
+  return (url&&url.length>100)?{url:url,w:c.w,h:c.h}:null;
+}
+function toBlob(u){
+  var bin=atob(u.slice(u.indexOf(',')+1)), n=bin.length, a=new Uint8Array(n);
+  for(var i=0;i<n;i++) a[i]=bin.charCodeAt(i);
+  return new Blob([a],{type:'image/png'});
+}
+capGo.addEventListener('click',function(){
+  var ch=capCh.value, no=capNum(), name='ภาพที่_'+ch+'-'+no+'_ผังตู้3มิติ.png';
+  capGo.disabled=true; capMsg.textContent='กำลังบันทึก '+name;
+  setTimeout(function(){
+    var img=renderPNG();
+    if(!img){ capMsg.textContent='บันทึกไม่สำเร็จ เพราะภาพใหญ่เกินที่เบราว์เซอร์รองรับ เลือก 2× แล้วลองอีกครั้ง'; capGo.disabled=false; return; }
+    var href=URL.createObjectURL(toBlob(img.url)), a=document.createElement('a');
+    a.href=href; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(href); },5000);
+    capMsg.textContent='บันทึก '+name+' แล้ว ('+img.w+' × '+img.h+' px, '+(capBg==='white'?'พื้นขาว':'พื้นโปร่งใส')+')';
+    capNo[ch]=no+1; capIn.value=capNo[ch]; capGo.disabled=false;
+  },30);
+});
+
+function resize(){
+  var r=stage.getBoundingClientRect(); if(r.width<2||r.height<2) return;
+  renderer.setSize(r.width,r.height,false); camera.aspect=r.width/r.height; camera.updateProjectionMatrix();
+  showPx();
+}
+if(window.ResizeObserver) new ResizeObserver(resize).observe(stage); else window.addEventListener('resize',resize);
+/* ---------- figure mode for the report: ?fig=over|door|hinge|board|led&door=110&led=solid&ledon=1&labels=1&up=x&cam=x,y,z ---------- */
+var Q=new URLSearchParams(location.search), FIG=Q.get('fig');
+if(FIG){
+  document.body.classList.add('fig');
+  view=FIG; controls.enabled=false; reduceMotion=true;
+  if(Q.get('labels')==='0'){ showLabels=false; }
+  if(Q.get('led')) ledMode=Q.get('led');
+  if(Q.get('ledon')) ledForce=Q.get('ledon')==='1';
+  if(Q.get('cover')==='0') coverG.visible=false;
+  renderer.setClearColor(0xffffff,1);
+}
+resize();
+var doorDeg=FIG&&Q.get('door')?+Q.get('door'):110;
+doorPivot.rotation.y=doorDeg*Math.PI/180; doorIn.value=doorDeg; doorOut.textContent=doorDeg+'°'; rebuildFlex();
+applyView(true);
+if(!FIG){ var hv=location.hash.slice(1), hb=document.querySelector('[data-view="'+hv+'"]'); if(hb) hb.click(); }
+if(FIG){
+  ledBox.hidden=true;
+  var pr0=presets()[view], off=Q.get('cam'), tg=Q.get('tgt');
+  if(tg){ var g3=tg.split(',').map(Number); pr0.t.add(V(g3[0],g3[1],g3[2])); pr0.p.add(V(g3[0],g3[1],g3[2])); camera.position.copy(pr0.p); }
+  if(off){ var o=off.split(',').map(Number); camera.position.copy(pr0.t).add(V(o[0],o[1],o[2])); }
+  if(Q.get('up')==='x') camera.up.set(1,0,0);
+  if(Q.get('fov')) { camera.fov=+Q.get('fov'); camera.updateProjectionMatrix(); }
+  camera.lookAt(pr0.t);
+}
+
+var first=true, frames=0, fontsOK=false, fontsAt=0;
+(document.fonts?document.fonts.ready:Promise.resolve()).then(function(){ fontsOK=true; fontsAt=frames; if(coKey) buildLabels(coKey); });
+function ease(k){ return k<0.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2; }
+function loop(now){
+  if(tw){
+    var k=Math.min(1,(now-tw.t0)/tw.dur), e=ease(k);
+    camera.position.lerpVectors(tw.fp,tw.tp,e); controls.target.lerpVectors(tw.ft,tw.tt,e);
+    if(k>=1) tw=null;
+  }
+  tickLeds(now);
+  if(!FIG) controls.update();
+  renderer.render(scene,camera);
+  layoutLabels();
+  if(first){ first=false; loading.hidden=true; }
+  frames++;
+  if(fontsOK&&frames>=fontsAt+3){ window.__ready=true; if(FIG) return; }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+})();
+</script>
+
+</body>
+</html>
